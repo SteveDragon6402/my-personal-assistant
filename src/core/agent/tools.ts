@@ -15,13 +15,26 @@ export const logMealTool: ToolDefinition = {
     'Log a meal the user ate. Use this when the user tells you what they ate. ' +
     'Estimate calories and macros (protein, carbs, fat) and, when you can, key vitamins and minerals. ' +
     'Vitamins: A (mcg RAE), C (mg), D (mcg), E (mg), K (mcg), B6 (mg), B12 (mcg), folate (mcg DFE). ' +
-    'Minerals: iron, calcium, magnesium, zinc, potassium (mg); selenium, iodine (mcg). All micros are optional estimates.',
+    'Minerals: iron, calcium, magnesium, zinc, potassium (mg); selenium, iodine (mcg). All micros are optional estimates. ' +
+    'Classify the meal_type based on context (e.g., "breakfast", "lunch", "dinner", "snack", "late night snack"). ' +
+    'If the user mentions when they ate (e.g., "I had eggs this morning at 8am"), set time_eaten accordingly.',
   input_schema: {
     type: 'object',
     properties: {
       description: {
         type: 'string',
         description: 'A brief description of what the user ate',
+      },
+      meal_type: {
+        type: 'string',
+        description:
+          'Type of meal based on context (e.g., "breakfast", "lunch", "dinner", "snack", "brunch", "late night snack")',
+      },
+      time_eaten: {
+        type: 'string',
+        description:
+          'ISO 8601 timestamp of when the meal was eaten (e.g., "2026-02-01T08:30:00"). ' +
+          'Only set if the user specifies a time. Omit to default to now.',
       },
       calories: {
         type: 'number',

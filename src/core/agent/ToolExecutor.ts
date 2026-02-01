@@ -114,12 +114,25 @@ export class ToolExecutor {
   }
 
   private logMeal(input: Record<string, unknown>): string {
-    const date = new Date().toISOString().split('T')[0] ?? '';
+    const now = Date.now();
     const description = String(input.description ?? '');
     const calories = this.num(input.calories);
     const protein = this.num(input.protein);
     const carbs = this.num(input.carbs);
     const fat = this.num(input.fat);
+    const mealType = typeof input.meal_type === 'string' ? input.meal_type : undefined;
+
+    // Parse time_eaten if provided, otherwise default to now
+    let timeEaten = now;
+    if (typeof input.time_eaten === 'string' && input.time_eaten.trim()) {
+      const parsed = Date.parse(input.time_eaten);
+      if (!Number.isNaN(parsed)) {
+        timeEaten = parsed;
+      }
+    }
+
+    // Derive date from timeEaten
+    const date = new Date(timeEaten).toISOString().split('T')[0] ?? '';
 
     const vitamins =
       this.num(input.vitamin_a_mcg) != null ||
@@ -169,6 +182,8 @@ export class ToolExecutor {
       estimatedProtein: protein,
       estimatedCarbs: carbs,
       estimatedFat: fat,
+      timeEaten,
+      mealType,
       vitamins,
       minerals,
     });
@@ -178,6 +193,8 @@ export class ToolExecutor {
       meal: {
         id: meal.id,
         description: meal.description,
+        meal_type: meal.mealType,
+        time_eaten: new Date(timeEaten).toISOString(),
         calories: meal.estimatedCalories,
         protein: meal.estimatedProtein,
         carbs: meal.estimatedCarbs,

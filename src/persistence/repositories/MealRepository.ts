@@ -38,6 +38,10 @@ export interface Meal {
   vitamins?: MealVitamins;
   /** AI-estimated key minerals (optional). */
   minerals?: MealMinerals;
+  /** Timestamp when the meal was eaten (defaults to createdAt if not specified). */
+  timeEaten?: number;
+  /** Free-form meal type (e.g., "breakfast", "lunch", "snack") as determined by AI. */
+  mealType?: string;
   createdAt: number;
 }
 
@@ -49,16 +53,20 @@ export class MealRepository {
   }
 
   create(meal: Omit<Meal, 'id' | 'createdAt'>): Meal {
+    const now = Date.now();
     const stmt = this.db.prepare(`
       INSERT INTO meals (
         chat_id, date, description, estimated_calories, estimated_protein, estimated_carbs, estimated_fat, image_path,
+        time_eaten, meal_type,
         vitamin_a_mcg, vitamin_c_mg, vitamin_d_mcg, vitamin_e_mg, vitamin_k_mcg, vitamin_b6_mg, vitamin_b12_mcg, folate_mcg,
         iron_mg, calcium_mg, magnesium_mg, zinc_mg, potassium_mg, selenium_mcg, iodine_mcg
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const v = meal.vitamins;
     const m = meal.minerals;
+    // Default timeEaten to now if not provided
+    const timeEaten = meal.timeEaten ?? now;
 
     const result = stmt.run(
       meal.chatId,
@@ -69,6 +77,8 @@ export class MealRepository {
       meal.estimatedCarbs ?? null,
       meal.estimatedFat ?? null,
       meal.imagePath ?? null,
+      timeEaten,
+      meal.mealType ?? null,
       v?.vitaminA ?? null,
       v?.vitaminC ?? null,
       v?.vitaminD ?? null,
@@ -89,7 +99,8 @@ export class MealRepository {
     return {
       id: Number(result.lastInsertRowid),
       ...meal,
-      createdAt: Date.now(),
+      timeEaten,
+      createdAt: now,
     };
   }
 
@@ -120,6 +131,8 @@ type MealRow = {
   estimated_carbs: number | null;
   estimated_fat: number | null;
   image_path: string | null;
+  time_eaten?: number | null;
+  meal_type?: string | null;
   created_at: number;
   // Micronutrients (optional so older DB rows without columns still type-check)
   vitamin_a_mcg?: number | null;
@@ -145,6 +158,7 @@ function rowToMeal(row: MealRow): Meal {
     chatId: row.chat_id ?? '',
     date: row.date,
     description: row.description,
+    timeEaten: row.time_eaten ?? row.created_at, // Default to created_at for older rows
     createdAt: row.created_at,
   };
   if (row.estimated_calories !== null) meal.estimatedCalories = row.estimated_calories;
@@ -152,6 +166,7 @@ function rowToMeal(row: MealRow): Meal {
   if (row.estimated_carbs !== null) meal.estimatedCarbs = row.estimated_carbs;
   if (row.estimated_fat !== null) meal.estimatedFat = row.estimated_fat;
   if (row.image_path !== null) meal.imagePath = row.image_path;
+  if (row.meal_type) meal.mealType = row.meal_type;
 
   const hasVit =
     row.vitamin_a_mcg != null ||

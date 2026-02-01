@@ -87,6 +87,18 @@ function runMigrations(db: Database.Database): void {
     logger.info('Added chat_id column to meals table');
   }
 
+  // Add time_eaten and meal_type columns to meals
+  if (!mealColumns.has('time_eaten')) {
+    db.exec('ALTER TABLE meals ADD COLUMN time_eaten INTEGER');
+    mealColumns.add('time_eaten');
+    logger.info('Added time_eaten column to meals table');
+  }
+  if (!mealColumns.has('meal_type')) {
+    db.exec('ALTER TABLE meals ADD COLUMN meal_type TEXT');
+    mealColumns.add('meal_type');
+    logger.info('Added meal_type column to meals table');
+  }
+
   // Add micronutrient columns to meals (vitamins A,C,D,E,K, B6, B12, folate; minerals)
   const microColumns: [string, string][] = [
     ['vitamin_a_mcg', 'INTEGER'],
