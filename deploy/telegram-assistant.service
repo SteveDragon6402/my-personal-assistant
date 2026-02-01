@@ -1,0 +1,16 @@
+[Unit]
+Description=Telegram AI Personal Assistant (webhook)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/telegram-assistant
+# "-" prefix = optional; service starts even if .env missing (app will then fail without TELEGRAM_BOT_TOKEN)
+EnvironmentFile=-/opt/telegram-assistant/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
