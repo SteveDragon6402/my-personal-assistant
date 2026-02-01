@@ -8,6 +8,9 @@ const configSchema = z.object({
   // Anthropic
   anthropicApiKey: z.string().min(1).optional(),
 
+  // OpenWeatherMap
+  openWeatherApiKey: z.string().optional(),
+
   // Email
   gmailClientId: z.string().optional(),
   gmailClientSecret: z.string().optional(),
@@ -39,6 +42,7 @@ const configSchema = z.object({
   port: z.coerce.number().int().positive().default(5000),
   llmTextModel: z.string().optional(),
   llmVisionModel: z.string().optional(),
+  llmDigestModel: z.string().optional(), // Haiku for digest summaries
   gcalClientId: z.string().optional(),
   gcalClientSecret: z.string().optional(),
   gcalRefreshToken: z.string().optional(),
@@ -59,6 +63,7 @@ function loadConfig(): Config {
     telegramBotToken: env('TELEGRAM_BOT_TOKEN'),
     telegramWebhookUrl: env('TELEGRAM_WEBHOOK_URL'),
     anthropicApiKey: env('ANTHROPIC_API_KEY'),
+    openWeatherApiKey: env('OPENWEATHER_API_KEY'),
     gmailClientId: env('GMAIL_CLIENT_ID'),
     gmailClientSecret: env('GMAIL_CLIENT_SECRET'),
     gmailRefreshToken: env('GMAIL_REFRESH_TOKEN'),
@@ -76,6 +81,7 @@ function loadConfig(): Config {
     port: env('PORT'),
     llmTextModel: env('LLM_TEXT_MODEL'),
     llmVisionModel: env('LLM_VISION_MODEL'),
+    llmDigestModel: env('LLM_DIGEST_MODEL'),
     gcalClientId: env('GCAL_CLIENT_ID'),
     gcalClientSecret: env('GCAL_CLIENT_SECRET'),
     gcalRefreshToken: env('GCAL_REFRESH_TOKEN'),

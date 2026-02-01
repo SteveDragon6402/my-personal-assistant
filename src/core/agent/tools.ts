@@ -401,6 +401,31 @@ export const fetchUrlTool: ToolDefinition = {
 };
 
 // ============================================================================
+// LOCATION TOOLS
+// ============================================================================
+
+export const setLocationTool: ToolDefinition = {
+  name: 'set_location',
+  description:
+    'Set the user\'s location (latitude and longitude) for weather in the morning digest. ' +
+    'Use this when the user tells you their city or location.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      lat: {
+        type: 'number',
+        description: 'Latitude (e.g., 51.5074 for London)',
+      },
+      lon: {
+        type: 'number',
+        description: 'Longitude (e.g., -0.1278 for London)',
+      },
+    },
+    required: ['lat', 'lon'],
+  },
+};
+
+// ============================================================================
 // ALL TOOLS COMBINED
 // ============================================================================
 
@@ -418,6 +443,8 @@ export const ALL_TOOLS: ToolDefinition[] = [
   logSleepTool,
   getSleepLastNightTool,
   getSleepRangeTool,
+  // Location
+  setLocationTool,
   // Obsidian
   createNoteTool,
   appendToDailyTool,

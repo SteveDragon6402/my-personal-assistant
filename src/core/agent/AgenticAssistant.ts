@@ -1,5 +1,5 @@
 import type { MessagePort, IncomingMessage } from '../../ports/MessagePort.js';
-import type { LLMPort, Message, ContentBlock } from '../../ports/LLMPort.js';
+import type { LLMPort, Message, ContentBlock, ImageContent, TextContent } from '../../ports/LLMPort.js';
 import type { NotesPort } from '../../ports/NotesPort.js';
 import type { EmailPort } from '../../ports/EmailPort.js';
 import type { SleepDataPort } from '../../ports/SleepDataPort.js';
@@ -7,6 +7,8 @@ import type { MessageHistoryRepository } from '../../persistence/repositories/Me
 import type { MealRepository } from '../../persistence/repositories/MealRepository.js';
 import type { HealthProfileRepository } from '../../persistence/repositories/HealthProfileRepository.js';
 import type { SleepLogRepository } from '../../persistence/repositories/SleepLogRepository.js';
+import type { UserPreferencesRepository } from '../../persistence/repositories/UserPreferencesRepository.js';
+import type { MorningDigestService } from '../digest/MorningDigestService.js';
 import { ToolExecutor, type ToolExecutorDependencies } from './ToolExecutor.js';
 import { ALL_TOOLS } from './tools.js';
 import { createLogger } from '../../utils/logger.js';
@@ -23,7 +25,9 @@ export interface AgenticAssistantDependencies {
   sleepLogRepository: SleepLogRepository;
   mealRepository: MealRepository;
   healthProfileRepository: HealthProfileRepository;
+  userPreferencesRepository: UserPreferencesRepository;
   messageHistoryRepository: MessageHistoryRepository;
+  morningDigestService?: MorningDigestService;
   systemPrompt: string;
 }
 
@@ -66,11 +70,44 @@ export class AgenticAssistant {
     const logger = this.logger.child({ method: 'handleMessage', from: message.from });
     const chatId = message.from;
 
+    // Build user message content - may include image if photo was sent
+    let userContent: string | ContentBlock[] = message.text;
+
+    // If the message has a photo, include it in the content
+    if (message.hasMedia && message.mediaType === 'photo' && message.mediaUrl) {
+      try {
+        // Resolve Telegram file_id to actual URL
+        const imageUrl = await this.deps.messagePort.getMediaUrl?.(message.mediaUrl);
+        if (imageUrl) {
+          const contentBlocks: ContentBlock[] = [];
+
+          // Add image block
+          const imageBlock: ImageContent = {
+            type: 'image',
+            source: { type: 'url', url: imageUrl },
+          };
+          contentBlocks.push(imageBlock);
+
+          // Add text block (caption or default prompt for meal photo)
+          const textBlock: TextContent = {
+            type: 'text',
+            text: message.text || 'What is this meal? Please estimate the calories and macros and log it.',
+          };
+          contentBlocks.push(textBlock);
+
+          userContent = contentBlocks;
+          logger.info({ imageUrl }, 'Including image in message');
+        }
+      } catch (error) {
+        logger.warn({ error }, 'Failed to resolve image URL, proceeding with text only');
+      }
+    }
+
     // Process only the current message (no history to avoid re-running old commands)
     const messages: Message[] = [
       {
         role: 'user',
-        content: message.text,
+        content: userContent,
       },
     ];
 
@@ -82,6 +119,8 @@ export class AgenticAssistant {
       sleepLogRepository: this.deps.sleepLogRepository,
       mealRepository: this.deps.mealRepository,
       healthProfileRepository: this.deps.healthProfileRepository,
+      userPreferencesRepository: this.deps.userPreferencesRepository,
+      morningDigestService: this.deps.morningDigestService,
     };
     const toolExecutor = new ToolExecutor(toolExecutorDeps, chatId);
 

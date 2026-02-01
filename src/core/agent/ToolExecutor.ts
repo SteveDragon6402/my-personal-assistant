@@ -8,6 +8,8 @@ import type {
 } from '../../persistence/repositories/MealRepository.js';
 import type { HealthProfileRepository } from '../../persistence/repositories/HealthProfileRepository.js';
 import type { SleepLogRepository } from '../../persistence/repositories/SleepLogRepository.js';
+import type { UserPreferencesRepository } from '../../persistence/repositories/UserPreferencesRepository.js';
+import type { MorningDigestService } from '../digest/MorningDigestService.js';
 import { createLogger } from '../../utils/logger.js';
 
 export interface ToolExecutorDependencies {
@@ -17,6 +19,8 @@ export interface ToolExecutorDependencies {
   sleepLogRepository: SleepLogRepository;
   mealRepository: MealRepository;
   healthProfileRepository: HealthProfileRepository;
+  userPreferencesRepository: UserPreferencesRepository;
+  morningDigestService?: MorningDigestService;
 }
 
 export class ToolExecutor {
@@ -61,6 +65,10 @@ export class ToolExecutor {
           return this.getSleepLastNight();
         case 'get_sleep_range':
           return this.getSleepRange(input);
+
+        // Location tools
+        case 'set_location':
+          return this.setLocation(input);
 
         // Obsidian tools
         case 'create_note':
@@ -383,6 +391,13 @@ export class ToolExecutor {
 
     const entry = this.deps.sleepLogRepository.create(this.chatId, date, rawText);
 
+    // Trigger morning digest after sleep is logged (fire and forget)
+    if (this.deps.morningDigestService) {
+      this.deps.morningDigestService.triggerDigest(this.chatId).catch((error) => {
+        this.logger.error({ error }, 'Failed to trigger morning digest');
+      });
+    }
+
     return JSON.stringify({
       success: true,
       entry: {
@@ -390,6 +405,35 @@ export class ToolExecutor {
         date: entry.date,
         raw_text_preview: entry.rawText.slice(0, 200),
       },
+    });
+  }
+
+  // ============================================================================
+  // LOCATION TOOLS
+  // ============================================================================
+
+  private setLocation(input: Record<string, unknown>): string {
+    const lat = typeof input.lat === 'number' ? input.lat : undefined;
+    const lon = typeof input.lon === 'number' ? input.lon : undefined;
+
+    if (lat === undefined || lon === undefined) {
+      return JSON.stringify({
+        success: false,
+        message: 'Both lat and lon are required as numbers.',
+      });
+    }
+
+    this.deps.userPreferencesRepository.upsert({
+      chatId: this.chatId,
+      lat,
+      lon,
+    });
+
+    return JSON.stringify({
+      success: true,
+      lat,
+      lon,
+      message: 'Location saved. You will now get weather in your morning digest.',
     });
   }
 

@@ -9,6 +9,8 @@ export interface UserPreferences {
   includeNewsletters: boolean;
   includeCalendar: boolean;
   includeCaptureReview: boolean;
+  lat?: number;
+  lon?: number;
   updatedAt: number;
 }
 
@@ -29,7 +31,7 @@ export class UserPreferencesRepository {
   get(chatId: string): UserPreferences | null {
     const row = this.db
       .prepare(
-        `SELECT chat_id, digest_time, timezone, include_sleep, include_newsletters, include_calendar, include_capture_review, updated_at
+        `SELECT chat_id, digest_time, timezone, include_sleep, include_newsletters, include_calendar, include_capture_review, lat, lon, updated_at
          FROM user_preferences WHERE chat_id = ?`
       )
       .get(chatId) as {
@@ -40,6 +42,8 @@ export class UserPreferencesRepository {
       include_newsletters: number;
       include_calendar: number;
       include_capture_review: number;
+      lat: number | null;
+      lon: number | null;
       updated_at: number;
     } | undefined;
 
@@ -52,6 +56,8 @@ export class UserPreferencesRepository {
       includeNewsletters: row.include_newsletters === 1,
       includeCalendar: row.include_calendar === 1,
       includeCaptureReview: row.include_capture_review === 1,
+      lat: row.lat ?? undefined,
+      lon: row.lon ?? undefined,
       updatedAt: row.updated_at,
     };
   }
@@ -76,11 +82,13 @@ export class UserPreferencesRepository {
     const includeNewsletters = prefs.includeNewsletters ?? existing?.includeNewsletters ?? true;
     const includeCalendar = prefs.includeCalendar ?? existing?.includeCalendar ?? true;
     const includeCaptureReview = prefs.includeCaptureReview ?? existing?.includeCaptureReview ?? true;
+    const lat = prefs.lat ?? existing?.lat ?? null;
+    const lon = prefs.lon ?? existing?.lon ?? null;
 
     this.db
       .prepare(
-        `INSERT INTO user_preferences (chat_id, digest_time, timezone, include_sleep, include_newsletters, include_calendar, include_capture_review, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))
+        `INSERT INTO user_preferences (chat_id, digest_time, timezone, include_sleep, include_newsletters, include_calendar, include_capture_review, lat, lon, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%s', 'now'))
          ON CONFLICT(chat_id) DO UPDATE SET
            digest_time = excluded.digest_time,
            timezone = excluded.timezone,
@@ -88,6 +96,8 @@ export class UserPreferencesRepository {
            include_newsletters = excluded.include_newsletters,
            include_calendar = excluded.include_calendar,
            include_capture_review = excluded.include_capture_review,
+           lat = excluded.lat,
+           lon = excluded.lon,
            updated_at = strftime('%s', 'now')`
       )
       .run(
@@ -97,7 +107,9 @@ export class UserPreferencesRepository {
         includeSleep ? 1 : 0,
         includeNewsletters ? 1 : 0,
         includeCalendar ? 1 : 0,
-        includeCaptureReview ? 1 : 0
+        includeCaptureReview ? 1 : 0,
+        lat,
+        lon
       );
   }
 

@@ -49,7 +49,15 @@ export interface ToolUseContent {
   input: Record<string, unknown>;
 }
 
-export type ContentBlock = TextContent | ToolUseContent | ToolResultContent;
+export interface ImageContent {
+  type: 'image';
+  source: {
+    type: 'url';
+    url: string;
+  };
+}
+
+export type ContentBlock = TextContent | ToolUseContent | ToolResultContent | ImageContent;
 
 export interface Message {
   role: 'user' | 'assistant';

@@ -128,7 +128,7 @@ function runMigrations(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_pending_captures_resolved ON pending_captures(resolved_at);
   `);
 
-  // User preferences (per chat_id: digest time, timezone, section toggles)
+  // User preferences (per chat_id: digest time, timezone, section toggles, location)
   db.exec(`
     CREATE TABLE IF NOT EXISTS user_preferences (
       chat_id TEXT PRIMARY KEY,
@@ -141,6 +141,18 @@ function runMigrations(db: Database.Database): void {
       updated_at INTEGER DEFAULT (strftime('%s', 'now'))
     );
   `);
+
+  // Add lat/lon columns to user_preferences if missing (for weather in digest)
+  const prefsInfo = db.prepare('PRAGMA table_info(user_preferences)').all() as Array<{ name: string }>;
+  const prefsColumns = new Set(prefsInfo.map((c) => c.name));
+  if (!prefsColumns.has('lat')) {
+    db.exec('ALTER TABLE user_preferences ADD COLUMN lat REAL');
+    logger.info('Added lat column to user_preferences table');
+  }
+  if (!prefsColumns.has('lon')) {
+    db.exec('ALTER TABLE user_preferences ADD COLUMN lon REAL');
+    logger.info('Added lon column to user_preferences table');
+  }
 
   // User health profile (height, weight, gender, age for BMI and personalized nutrition)
   db.exec(`
