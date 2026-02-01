@@ -5,6 +5,7 @@ import type { EmailPort } from '../../ports/EmailPort.js';
 import type { SleepDataPort } from '../../ports/SleepDataPort.js';
 import type { MessageHistoryRepository } from '../../persistence/repositories/MessageHistoryRepository.js';
 import type { MealRepository } from '../../persistence/repositories/MealRepository.js';
+import type { HealthProfileRepository } from '../../persistence/repositories/HealthProfileRepository.js';
 import type { SleepLogRepository } from '../../persistence/repositories/SleepLogRepository.js';
 import { ToolExecutor, type ToolExecutorDependencies } from './ToolExecutor.js';
 import { ALL_TOOLS } from './tools.js';
@@ -21,6 +22,7 @@ export interface AgenticAssistantDependencies {
   sleepDataPort: SleepDataPort;
   sleepLogRepository: SleepLogRepository;
   mealRepository: MealRepository;
+  healthProfileRepository: HealthProfileRepository;
   messageHistoryRepository: MessageHistoryRepository;
   systemPrompt: string;
 }
@@ -79,6 +81,7 @@ export class AgenticAssistant {
       sleepDataPort: this.deps.sleepDataPort,
       sleepLogRepository: this.deps.sleepLogRepository,
       mealRepository: this.deps.mealRepository,
+      healthProfileRepository: this.deps.healthProfileRepository,
     };
     const toolExecutor = new ToolExecutor(toolExecutorDeps, chatId);
 

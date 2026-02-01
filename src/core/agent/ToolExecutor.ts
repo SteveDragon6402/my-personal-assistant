@@ -1,7 +1,12 @@
 import type { NotesPort } from '../../ports/NotesPort.js';
 import type { EmailPort } from '../../ports/EmailPort.js';
 import type { SleepDataPort } from '../../ports/SleepDataPort.js';
-import type { MealRepository } from '../../persistence/repositories/MealRepository.js';
+import type {
+  MealRepository,
+  MealVitamins,
+  MealMinerals,
+} from '../../persistence/repositories/MealRepository.js';
+import type { HealthProfileRepository } from '../../persistence/repositories/HealthProfileRepository.js';
 import type { SleepLogRepository } from '../../persistence/repositories/SleepLogRepository.js';
 import { createLogger } from '../../utils/logger.js';
 
@@ -11,6 +16,7 @@ export interface ToolExecutorDependencies {
   sleepDataPort: SleepDataPort;
   sleepLogRepository: SleepLogRepository;
   mealRepository: MealRepository;
+  healthProfileRepository: HealthProfileRepository;
 }
 
 export class ToolExecutor {
@@ -37,6 +43,12 @@ export class ToolExecutor {
           return this.getMealsToday();
         case 'get_meals_range':
           return this.getMealsRange(input);
+
+        // Health profile tools
+        case 'get_health_profile':
+          return this.getHealthProfile();
+        case 'set_health_profile':
+          return this.setHealthProfile(input);
 
         // Email tools
         case 'get_newsletters':
@@ -89,13 +101,57 @@ export class ToolExecutor {
   // MEAL TOOLS
   // ============================================================================
 
+  private num(v: unknown): number | undefined {
+    return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+  }
+
   private logMeal(input: Record<string, unknown>): string {
     const date = new Date().toISOString().split('T')[0] ?? '';
     const description = String(input.description ?? '');
-    const calories = typeof input.calories === 'number' ? input.calories : undefined;
-    const protein = typeof input.protein === 'number' ? input.protein : undefined;
-    const carbs = typeof input.carbs === 'number' ? input.carbs : undefined;
-    const fat = typeof input.fat === 'number' ? input.fat : undefined;
+    const calories = this.num(input.calories);
+    const protein = this.num(input.protein);
+    const carbs = this.num(input.carbs);
+    const fat = this.num(input.fat);
+
+    const vitamins =
+      this.num(input.vitamin_a_mcg) != null ||
+      this.num(input.vitamin_c_mg) != null ||
+      this.num(input.vitamin_d_mcg) != null ||
+      this.num(input.vitamin_e_mg) != null ||
+      this.num(input.vitamin_k_mcg) != null ||
+      this.num(input.vitamin_b6_mg) != null ||
+      this.num(input.vitamin_b12_mcg) != null ||
+      this.num(input.folate_mcg) != null
+        ? {
+            vitaminA: this.num(input.vitamin_a_mcg),
+            vitaminC: this.num(input.vitamin_c_mg),
+            vitaminD: this.num(input.vitamin_d_mcg),
+            vitaminE: this.num(input.vitamin_e_mg),
+            vitaminK: this.num(input.vitamin_k_mcg),
+            vitaminB6: this.num(input.vitamin_b6_mg),
+            vitaminB12: this.num(input.vitamin_b12_mcg),
+            folate: this.num(input.folate_mcg),
+          }
+        : undefined;
+
+    const minerals =
+      this.num(input.iron_mg) != null ||
+      this.num(input.calcium_mg) != null ||
+      this.num(input.magnesium_mg) != null ||
+      this.num(input.zinc_mg) != null ||
+      this.num(input.potassium_mg) != null ||
+      this.num(input.selenium_mcg) != null ||
+      this.num(input.iodine_mcg) != null
+        ? {
+            iron: this.num(input.iron_mg),
+            calcium: this.num(input.calcium_mg),
+            magnesium: this.num(input.magnesium_mg),
+            zinc: this.num(input.zinc_mg),
+            potassium: this.num(input.potassium_mg),
+            selenium: this.num(input.selenium_mcg),
+            iodine: this.num(input.iodine_mcg),
+          }
+        : undefined;
 
     const meal = this.deps.mealRepository.create({
       chatId: this.chatId,
@@ -105,9 +161,11 @@ export class ToolExecutor {
       estimatedProtein: protein,
       estimatedCarbs: carbs,
       estimatedFat: fat,
+      vitamins,
+      minerals,
     });
 
-    return JSON.stringify({
+    const out: Record<string, unknown> = {
       success: true,
       meal: {
         id: meal.id,
@@ -118,7 +176,54 @@ export class ToolExecutor {
         fat: meal.estimatedFat,
         date: meal.date,
       },
-    });
+    };
+    if (meal.vitamins) (out.meal as Record<string, unknown>).vitamins = meal.vitamins;
+    if (meal.minerals) (out.meal as Record<string, unknown>).minerals = meal.minerals;
+    return JSON.stringify(out);
+  }
+
+  private mealToSummary(m: {
+    description: string;
+    date?: string;
+    estimatedCalories?: number;
+    estimatedProtein?: number;
+    estimatedCarbs?: number;
+    estimatedFat?: number;
+    vitamins?: MealVitamins;
+    minerals?: MealMinerals;
+  }): Record<string, unknown> {
+    const out: Record<string, unknown> = {
+      description: m.description,
+      calories: m.estimatedCalories,
+      protein: m.estimatedProtein,
+      carbs: m.estimatedCarbs,
+      fat: m.estimatedFat,
+    };
+    if (m.vitamins) out.vitamins = m.vitamins;
+    if (m.minerals) out.minerals = m.minerals;
+    return out;
+  }
+
+  private sumMicros(meals: Array<{ vitamins?: MealVitamins; minerals?: MealMinerals }>): {
+    vitamins?: MealVitamins;
+    minerals?: MealMinerals;
+  } {
+    const vitamins: MealVitamins = {};
+    const minerals: MealMinerals = {};
+    const vitKeys: (keyof MealVitamins)[] = [
+      'vitaminA', 'vitaminC', 'vitaminD', 'vitaminE', 'vitaminK', 'vitaminB6', 'vitaminB12', 'folate',
+    ];
+    const minKeys: (keyof MealMinerals)[] = [
+      'iron', 'calcium', 'magnesium', 'zinc', 'potassium', 'selenium', 'iodine',
+    ];
+    for (const m of meals) {
+      if (m.vitamins) for (const k of vitKeys) if (m.vitamins[k] != null) (vitamins as Record<string, number>)[k] = ((vitamins as Record<string, number>)[k] ?? 0) + m.vitamins[k]!;
+      if (m.minerals) for (const k of minKeys) if (m.minerals[k] != null) (minerals as Record<string, number>)[k] = ((minerals as Record<string, number>)[k] ?? 0) + m.minerals[k]!;
+    }
+    const out: { vitamins?: MealVitamins; minerals?: MealMinerals } = {};
+    if (Object.keys(vitamins).length) out.vitamins = vitamins;
+    if (Object.keys(minerals).length) out.minerals = minerals;
+    return out;
   }
 
   private getMealsToday(): string {
@@ -130,21 +235,20 @@ export class ToolExecutor {
     const totalCarbs = meals.reduce((sum, m) => sum + (m.estimatedCarbs ?? 0), 0);
     const totalFat = meals.reduce((sum, m) => sum + (m.estimatedFat ?? 0), 0);
 
+    const totals: Record<string, unknown> = {
+      calories: totalCalories,
+      protein: totalProtein,
+      carbs: totalCarbs,
+      fat: totalFat,
+    };
+    const microTotals = this.sumMicros(meals);
+    if (microTotals.vitamins) totals.vitamins = microTotals.vitamins;
+    if (microTotals.minerals) totals.minerals = microTotals.minerals;
+
     return JSON.stringify({
       date: today,
-      meals: meals.map((m) => ({
-        description: m.description,
-        calories: m.estimatedCalories,
-        protein: m.estimatedProtein,
-        carbs: m.estimatedCarbs,
-        fat: m.estimatedFat,
-      })),
-      totals: {
-        calories: totalCalories,
-        protein: totalProtein,
-        carbs: totalCarbs,
-        fat: totalFat,
-      },
+      meals: meals.map((m) => this.mealToSummary({ ...m, vitamins: m.vitamins, minerals: m.minerals })),
+      totals,
     });
   }
 
@@ -156,23 +260,95 @@ export class ToolExecutor {
     const totalCalories = meals.reduce((sum, m) => sum + (m.estimatedCalories ?? 0), 0);
     const totalProtein = meals.reduce((sum, m) => sum + (m.estimatedProtein ?? 0), 0);
 
+    const totals: Record<string, unknown> = {
+      calories: totalCalories,
+      protein: totalProtein,
+    };
+    const microTotals = this.sumMicros(meals);
+    if (microTotals.vitamins) totals.vitamins = microTotals.vitamins;
+    if (microTotals.minerals) totals.minerals = microTotals.minerals;
+
     return JSON.stringify({
       start_date: startDate,
       end_date: endDate,
       meal_count: meals.length,
       meals: meals.map((m) => ({
+        ...this.mealToSummary({ ...m, vitamins: m.vitamins, minerals: m.minerals }),
         date: m.date,
-        description: m.description,
-        calories: m.estimatedCalories,
-        protein: m.estimatedProtein,
-        carbs: m.estimatedCarbs,
-        fat: m.estimatedFat,
       })),
-      totals: {
-        calories: totalCalories,
-        protein: totalProtein,
-      },
+      totals,
     });
+  }
+
+  // ============================================================================
+  // HEALTH PROFILE TOOLS
+  // ============================================================================
+
+  private getHealthProfile(): string {
+    const profile = this.deps.healthProfileRepository.get(this.chatId);
+    if (!profile) {
+      return JSON.stringify({
+        found: false,
+        message: 'No health profile set. The user can set height, weight, gender, and age with set_health_profile.',
+      });
+    }
+    const out: Record<string, unknown> = {
+      found: true,
+      height_cm: profile.heightCm,
+      weight_kg: profile.weightKg,
+      gender: profile.gender,
+      age: profile.age,
+      updated_at: profile.updatedAt,
+    };
+    if (
+      profile.heightCm != null &&
+      profile.heightCm > 0 &&
+      profile.weightKg != null &&
+      profile.weightKg > 0
+    ) {
+      const heightM = profile.heightCm / 100;
+      out.bmi = Math.round((profile.weightKg / (heightM * heightM)) * 10) / 10;
+    }
+    return JSON.stringify(out);
+  }
+
+  private setHealthProfile(input: Record<string, unknown>): string {
+    const heightCm = this.num(input.height_cm);
+    const weightKg = this.num(input.weight_kg);
+    const gender =
+      typeof input.gender === 'string' && input.gender.trim()
+        ? input.gender.trim()
+        : undefined;
+    const age = this.num(input.age);
+    if (heightCm === undefined && weightKg === undefined && gender === undefined && age === undefined) {
+      return JSON.stringify({
+        success: false,
+        message: 'Provide at least one of: height_cm, weight_kg, gender, age.',
+      });
+    }
+    const profile = this.deps.healthProfileRepository.upsert(this.chatId, {
+      heightCm,
+      weightKg,
+      gender,
+      age,
+    });
+    const out: Record<string, unknown> = {
+      success: true,
+      height_cm: profile.heightCm,
+      weight_kg: profile.weightKg,
+      gender: profile.gender,
+      age: profile.age,
+    };
+    if (
+      profile.heightCm != null &&
+      profile.heightCm > 0 &&
+      profile.weightKg != null &&
+      profile.weightKg > 0
+    ) {
+      const heightM = profile.heightCm / 100;
+      out.bmi = Math.round((profile.weightKg / (heightM * heightM)) * 10) / 10;
+    }
+    return JSON.stringify(out);
   }
 
   // ============================================================================

@@ -9,18 +9,13 @@ import { ObsidianAdapter } from './adapters/obsidian/ObsidianAdapter.js';
 import { DisabledNotesAdapter } from './adapters/obsidian/DisabledNotesAdapter.js';
 import { ClaudeAdapter } from './adapters/llm/ClaudeAdapter.js';
 import { DisabledLLMAdapter } from './adapters/llm/DisabledLLMAdapter.js';
-import { PendingCaptureRepository } from './persistence/repositories/PendingCaptureRepository.js';
 import { MessageHistoryRepository } from './persistence/repositories/MessageHistoryRepository.js';
-import { UserPreferencesRepository } from './persistence/repositories/UserPreferencesRepository.js';
 import { MealRepository } from './persistence/repositories/MealRepository.js';
+import { HealthProfileRepository } from './persistence/repositories/HealthProfileRepository.js';
 import { loadPrompt } from './utils/prompts.js';
 import { StoredSleepAdapter } from './adapters/sleep/StoredSleepAdapter.js';
 import { SleepLogRepository } from './persistence/repositories/SleepLogRepository.js';
 import { GmailAdapter } from './adapters/email/GmailAdapter.js';
-import { GoogleCalendarAdapter } from './adapters/calendar/GoogleCalendarAdapter.js';
-import { DigestBuilder } from './core/digest/DigestBuilder.js';
-import { DailyDigestJob } from './scheduler/DailyDigestJob.js';
-import { scheduleDailyDigest } from './scheduler/index.js';
 import { startServer } from './server.js';
 
 const logger = createLogger({ component: 'index' });
@@ -41,34 +36,12 @@ async function main(): Promise<void> {
     const sleepLogRepository = new SleepLogRepository();
     const sleepAdapter = new StoredSleepAdapter(sleepLogRepository);
     const emailAdapter = new GmailAdapter(config);
-    const calendarAdapter = new GoogleCalendarAdapter(config);
-    const pendingCaptureRepository = new PendingCaptureRepository();
     const messageHistoryRepository = new MessageHistoryRepository();
-    const userPreferencesRepository = new UserPreferencesRepository();
     const mealRepository = new MealRepository();
+    const healthProfileRepository = new HealthProfileRepository();
 
     // Load prompts
-    const digestPrompt = await loadPrompt('digest_summary.md');
     const agentSystemPrompt = await loadPrompt('agent_system.md');
-
-    // Set up the daily digest job (still runs on schedule)
-    const digestBuilder = new DigestBuilder(
-      sleepAdapter,
-      calendarAdapter,
-      emailAdapter,
-      llmAdapter,
-      pendingCaptureRepository,
-      digestPrompt
-    );
-    const dailyDigestJob = new DailyDigestJob(
-      digestBuilder,
-      telegramAdapter,
-      messageHistoryRepository,
-      userPreferencesRepository,
-      config.digestTime,
-      config.timezone
-    );
-    scheduleDailyDigest(dailyDigestJob, config.digestTime, config.timezone);
 
     // Initialize the agentic assistant (sets up message handlers)
     new AgenticAssistant({
@@ -79,6 +52,7 @@ async function main(): Promise<void> {
       sleepDataPort: sleepAdapter,
       sleepLogRepository,
       mealRepository,
+      healthProfileRepository,
       messageHistoryRepository,
       systemPrompt: agentSystemPrompt,
     });

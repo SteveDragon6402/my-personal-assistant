@@ -13,6 +13,22 @@ import type { Config } from '../../config/index.js';
 import { createLogger } from '../../utils/logger.js';
 import { LLMError } from '../../utils/errors.js';
 
+/** Build system param with prompt caching so repeated use costs ~10% of normal input. */
+function buildSystemParam(
+  systemPrompt: string | undefined
+): Array<{ type: 'text'; text: string; cache_control: { type: 'ephemeral'; ttl: '1h' } }> | undefined {
+  if (!systemPrompt?.trim()) {
+    return undefined;
+  }
+  return [
+    {
+      type: 'text',
+      text: systemPrompt,
+      cache_control: { type: 'ephemeral', ttl: '1h' },
+    },
+  ];
+}
+
 export class ClaudeAdapter implements LLMPort {
   private readonly logger = createLogger({ adapter: 'ClaudeAdapter' });
   private readonly client: Anthropic;
@@ -34,7 +50,7 @@ export class ClaudeAdapter implements LLMPort {
         model: this.textModel,
         max_tokens: request.maxTokens ?? 800,
         temperature: request.temperature ?? 0.2,
-        system: request.systemPrompt,
+        system: buildSystemParam(request.systemPrompt),
         messages: [
           {
             role: 'user',
@@ -56,7 +72,7 @@ export class ClaudeAdapter implements LLMPort {
       const response = await this.client.messages.create({
         model: this.visionModel,
         max_tokens: request.maxTokens ?? 800,
-        system: request.systemPrompt,
+        system: buildSystemParam(request.systemPrompt),
         messages: [
           {
             role: 'user',
@@ -104,7 +120,7 @@ export class ClaudeAdapter implements LLMPort {
       const response = await this.client.messages.create({
         model: this.textModel,
         max_tokens: request.maxTokens ?? 1024,
-        system: request.systemPrompt,
+        system: buildSystemParam(request.systemPrompt),
         messages: anthropicMessages,
         tools: anthropicTools,
       });

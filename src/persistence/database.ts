@@ -81,9 +81,36 @@ function runMigrations(db: Database.Database): void {
 
   // Add chat_id to meals if missing (existing DBs created before per-user meals)
   const mealsInfo = db.prepare('PRAGMA table_info(meals)').all() as Array<{ name: string }>;
-  if (!mealsInfo.some((c) => c.name === 'chat_id')) {
+  const mealColumns = new Set(mealsInfo.map((c) => c.name));
+  if (!mealColumns.has('chat_id')) {
     db.exec('ALTER TABLE meals ADD COLUMN chat_id TEXT');
     logger.info('Added chat_id column to meals table');
+  }
+
+  // Add micronutrient columns to meals (vitamins A,C,D,E,K, B6, B12, folate; minerals)
+  const microColumns: [string, string][] = [
+    ['vitamin_a_mcg', 'INTEGER'],
+    ['vitamin_c_mg', 'INTEGER'],
+    ['vitamin_d_mcg', 'INTEGER'],
+    ['vitamin_e_mg', 'INTEGER'],
+    ['vitamin_k_mcg', 'INTEGER'],
+    ['vitamin_b6_mg', 'INTEGER'],
+    ['vitamin_b12_mcg', 'INTEGER'],
+    ['folate_mcg', 'INTEGER'],
+    ['iron_mg', 'INTEGER'],
+    ['calcium_mg', 'INTEGER'],
+    ['magnesium_mg', 'INTEGER'],
+    ['zinc_mg', 'INTEGER'],
+    ['potassium_mg', 'INTEGER'],
+    ['selenium_mcg', 'INTEGER'],
+    ['iodine_mcg', 'INTEGER'],
+  ];
+  for (const [col, colType] of microColumns) {
+    if (!mealColumns.has(col)) {
+      db.exec(`ALTER TABLE meals ADD COLUMN ${col} ${colType}`);
+      mealColumns.add(col);
+      logger.info({ column: col }, 'Added micronutrient column to meals table');
+    }
   }
 
   // Create pending_captures table
@@ -111,6 +138,18 @@ function runMigrations(db: Database.Database): void {
       include_newsletters INTEGER DEFAULT 1,
       include_calendar INTEGER DEFAULT 1,
       include_capture_review INTEGER DEFAULT 1,
+      updated_at INTEGER DEFAULT (strftime('%s', 'now'))
+    );
+  `);
+
+  // User health profile (height, weight, gender, age for BMI and personalized nutrition)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_health_profiles (
+      chat_id TEXT PRIMARY KEY,
+      height_cm REAL,
+      weight_kg REAL,
+      gender TEXT,
+      age INTEGER,
       updated_at INTEGER DEFAULT (strftime('%s', 'now'))
     );
   `);

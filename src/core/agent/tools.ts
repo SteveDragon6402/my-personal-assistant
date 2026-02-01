@@ -13,7 +13,9 @@ export const logMealTool: ToolDefinition = {
   name: 'log_meal',
   description:
     'Log a meal the user ate. Use this when the user tells you what they ate. ' +
-    'You should estimate calories and macros based on your knowledge of nutrition.',
+    'Estimate calories and macros (protein, carbs, fat) and, when you can, key vitamins and minerals. ' +
+    'Vitamins: A (mcg RAE), C (mg), D (mcg), E (mg), K (mcg), B6 (mg), B12 (mcg), folate (mcg DFE). ' +
+    'Minerals: iron, calcium, magnesium, zinc, potassium (mg); selenium, iodine (mcg). All micros are optional estimates.',
   input_schema: {
     type: 'object',
     properties: {
@@ -37,6 +39,23 @@ export const logMealTool: ToolDefinition = {
         type: 'number',
         description: 'Estimated fat in grams',
       },
+      // Vitamins (optional estimates; units in descriptions)
+      vitamin_a_mcg: { type: 'number', description: 'Vitamin A, mcg RAE' },
+      vitamin_c_mg: { type: 'number', description: 'Vitamin C, mg' },
+      vitamin_d_mcg: { type: 'number', description: 'Vitamin D, mcg' },
+      vitamin_e_mg: { type: 'number', description: 'Vitamin E, mg' },
+      vitamin_k_mcg: { type: 'number', description: 'Vitamin K, mcg' },
+      vitamin_b6_mg: { type: 'number', description: 'Vitamin B6, mg' },
+      vitamin_b12_mcg: { type: 'number', description: 'Vitamin B12, mcg' },
+      folate_mcg: { type: 'number', description: 'Folate, mcg DFE' },
+      // Minerals (optional estimates)
+      iron_mg: { type: 'number', description: 'Iron, mg' },
+      calcium_mg: { type: 'number', description: 'Calcium, mg' },
+      magnesium_mg: { type: 'number', description: 'Magnesium, mg' },
+      zinc_mg: { type: 'number', description: 'Zinc, mg' },
+      potassium_mg: { type: 'number', description: 'Potassium, mg' },
+      selenium_mcg: { type: 'number', description: 'Selenium, mcg' },
+      iodine_mcg: { type: 'number', description: 'Iodine, mcg' },
     },
     required: ['description'],
   },
@@ -69,6 +88,47 @@ export const getMealsRangeTool: ToolDefinition = {
       },
     },
     required: ['start_date', 'end_date'],
+  },
+};
+
+// ============================================================================
+// HEALTH PROFILE TOOLS
+// ============================================================================
+
+export const getHealthProfileTool: ToolDefinition = {
+  name: 'get_health_profile',
+  description:
+    'Get the user\'s health profile (height, weight, gender, age). Use this when giving nutrition or meal recommendations so you can account for BMI and personal context.',
+  input_schema: {
+    type: 'object',
+    properties: {},
+  },
+};
+
+export const setHealthProfileTool: ToolDefinition = {
+  name: 'set_health_profile',
+  description:
+    'Record or update the user\'s health profile: height (cm), weight (kg), gender, age. Use when the user shares this info. Only provided fields are updated.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      height_cm: {
+        type: 'number',
+        description: 'Height in centimeters',
+      },
+      weight_kg: {
+        type: 'number',
+        description: 'Weight in kilograms',
+      },
+      gender: {
+        type: 'string',
+        description: 'Gender (e.g. male, female, other)',
+      },
+      age: {
+        type: 'number',
+        description: 'Age in years',
+      },
+    },
   },
 };
 
@@ -349,6 +409,9 @@ export const ALL_TOOLS: ToolDefinition[] = [
   logMealTool,
   getMealsTodayTool,
   getMealsRangeTool,
+  // Health profile
+  getHealthProfileTool,
+  setHealthProfileTool,
   // Email
   getNewslettersTool,
   // Sleep
