@@ -34,13 +34,13 @@ const HEALTH_TOOLS: ToolDefinition[] = [
   },
 ];
 
-const WEATHER_PROMPT = `You are a helpful assistant summarizing weather for a morning digest.
+const WEATHER_PROMPT = `You are summarizing weather for a morning digest.
 
 Given the weather data below, provide:
-1. OBJECTIVE: A brief factual summary (temperature, conditions, rain chance)
-2. SUBJECTIVE: Practical advice (e.g., "Take an umbrella", "Great day for outdoor exercise")
+1. OBJECTIVE: A brief factual summary (temperature, conditions, rain chance). Use the same units as the data (e.g. °C for temperature).
+2. SUBJECTIVE: Practical advice (e.g. "Take an umbrella", "Good day for a run").
 
-Keep it concise - 2-3 sentences total. Be friendly but efficient.
+Keep it to 2-3 sentences. Be concise and factual.
 
 Weather data:
 {{DATA}}`;
@@ -48,26 +48,31 @@ Weather data:
 const HEALTH_PROMPT = `You are a health coach assistant creating a brief morning health focus.
 
 Today is {{DATE}}. Use the tools to:
-1. Get yesterday's meals (to see nutrition intake)
-2. Get sleep data for the past 3 days (to see sleep patterns)
+1. Get meals for the last 3 days (get_meals_range: start_date and end_date covering the past 3 days)
+2. Get sleep data for the last 3 days (get_sleep_range: same date range)
 
-Then provide a brief, actionable health focus for today based on what you find. Keep it to 2-3 sentences.
-Examples: "You ate light on protein yesterday, consider eggs or fish today." or "Your sleep has been short - try to wind down early tonight."
+Then provide a brief, actionable health focus for today based on what you find. Cite the data: use actual numbers (calories, protein, sleep score, time asleep, RHR, HRV, interruptions) when available. Keep it to 2-3 sentences.
 
-If no data is available, give general wellness advice.`;
+Examples (quantitatively supported):
+- "Last 3 days averaged ~1,200 cal and 42g protein; aim for at least one protein-rich meal today to close the gap toward ~60g."
+- "Sleep averaged 6h 20m with scores 72, 68, 81 and 4 interruptions/night; aim for 7h and a consistent wind-down to reduce interruptions."
+- "RHR 58–62 and HRV 45–52 ms over the past 3 nights—recovery looks stable; keep hydration and meal timing consistent today."
+
+If no data is available, give one sentence of general wellness advice.`;
 
 const RSS_PROMPT = `You are a news curator for a morning digest.
 
-From the headlines below, pick exactly 5 must-read articles across 5 different categories. 
-Create 5 unique categories based on the content (e.g., "Morning Coffee Read", "Deep Dive", "Quick Hit", "Geopolitics", "Tech Security", "Economics", "Big Picture", etc.).
+From the headlines below, pick exactly 5 must-read articles. Assign each pick a category label that is creative, distinctive, and interesting—not a topic area (avoid "Geopolitics", "Tech", "Economics", "Security", etc.).
+
+Categories should surprise or delight: name the *vibe*, *lens*, or *reason to read* rather than the subject. Examples of the kind of label you want: "Read this with coffee", "The one that reframes everything", "Contrarian take", "Best with 20 minutes to spare", "Might change your mind", "Underrated angle", "The rabbit hole", "Worth the long read". Invent new ones every time; never default to dull topic buckets.
 
 For each pick, provide:
-- category: Your chosen category name (be creative, 2-3 words max)
+- category: A unique, interesting label (2–5 words). No topic-area names.
 - headline: The article title
 - pitch: Why to read it (under 10 words)
 - link: The URL
 
-Return ONLY valid JSON array, no other text:
+Output only the JSON array—no markdown code fences, no surrounding text, no explanation. Valid example:
 [{"category":"...", "headline":"...", "pitch":"...", "link":"..."}]
 
 Headlines:
@@ -252,13 +257,20 @@ export class MorningDigestService {
       return JSON.stringify({
         found: true,
         nights: sleepData.length,
-        sessions: sleepData.map((s) => ({
-          date: s.date,
-          score: s.sleepScore,
-          deep_minutes: s.deepSleepMinutes,
-          rem_minutes: s.remSleepMinutes,
-          time_asleep: s.timeAsleep,
-        })),
+        sessions: sleepData.map((s) => {
+          const hours = Math.floor(s.timeAsleep / 60);
+          const mins = s.timeAsleep % 60;
+          return {
+            date: s.date,
+            score: s.sleepScore,
+            time_slept: `${hours}h ${mins}m`,
+            deep_minutes: s.deepSleepMinutes,
+            rem_minutes: s.remSleepMinutes,
+            rhr: s.restingHeartRate,
+            hrv: s.hrv,
+            interruptions: s.interruptions,
+          };
+        }),
       });
     }
 

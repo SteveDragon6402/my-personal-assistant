@@ -190,6 +190,26 @@ function runMigrations(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_sleep_log_chat_date ON sleep_log(chat_id, date);
   `);
 
+  // Add structured sleep fields to sleep_log
+  const sleepInfo = db.prepare('PRAGMA table_info(sleep_log)').all() as Array<{ name: string }>;
+  const sleepColumns = new Set(sleepInfo.map((c) => c.name));
+  const sleepFieldsToAdd: [string, string][] = [
+    ['sleep_score', 'INTEGER'],
+    ['time_slept_minutes', 'INTEGER'],
+    ['deep_sleep_minutes', 'INTEGER'],
+    ['rem_sleep_minutes', 'INTEGER'],
+    ['rhr', 'INTEGER'], // Resting heart rate
+    ['hrv', 'INTEGER'], // Heart rate variability
+    ['interruptions', 'INTEGER'],
+  ];
+  for (const [col, colType] of sleepFieldsToAdd) {
+    if (!sleepColumns.has(col)) {
+      db.exec(`ALTER TABLE sleep_log ADD COLUMN ${col} ${colType}`);
+      sleepColumns.add(col);
+      logger.info({ column: col }, 'Added column to sleep_log table');
+    }
+  }
+
   // Assistant responses (for conversation history)
   db.exec(`
     CREATE TABLE IF NOT EXISTS assistant_responses (

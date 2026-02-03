@@ -172,19 +172,47 @@ export const getNewslettersTool: ToolDefinition = {
 export const logSleepTool: ToolDefinition = {
   name: 'log_sleep',
   description:
-    'Store raw sleep data that the user pastes or forwards from their sleep tracker app. ' +
-    'Use this when the user shares sleep data text.',
+    'Log sleep data from the user. Extract structured metrics when possible. ' +
+    'Use this when the user shares sleep data (pasted from an app, or described verbally).',
   input_schema: {
     type: 'object',
     properties: {
       raw_text: {
         type: 'string',
-        description: 'The raw sleep data text from the user',
+        description: 'The raw sleep data text from the user (for reference/backup)',
       },
       date: {
         type: 'string',
         description:
           'The date for this sleep entry in ISO format (YYYY-MM-DD). Defaults to today if not specified.',
+      },
+      sleep_score: {
+        type: 'number',
+        description: 'Sleep quality score (0-100) if provided',
+      },
+      time_slept_minutes: {
+        type: 'number',
+        description: 'Total time slept in minutes (e.g., 420 for 7 hours)',
+      },
+      deep_sleep_minutes: {
+        type: 'number',
+        description: 'Deep sleep duration in minutes',
+      },
+      rem_sleep_minutes: {
+        type: 'number',
+        description: 'REM sleep duration in minutes',
+      },
+      rhr: {
+        type: 'number',
+        description: 'Resting heart rate in bpm',
+      },
+      hrv: {
+        type: 'number',
+        description: 'Heart rate variability in milliseconds',
+      },
+      interruptions: {
+        type: 'number',
+        description: 'Number of sleep interruptions/awakenings',
       },
     },
     required: ['raw_text'],

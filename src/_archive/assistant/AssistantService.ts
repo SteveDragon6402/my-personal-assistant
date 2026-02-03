@@ -82,7 +82,7 @@ export class AssistantService {
       this.awaitingSleep.delete(message.from);
       const date = new Date().toISOString().split('T')[0];
       if (!date) return;
-      this.sleepLogRepository.create(message.from, date, message.text.trim());
+      this.sleepLogRepository.create({ chatId: message.from, date, rawText: message.text.trim() });
       await this.messagePort.sendMessage(
         message.from,
         `😴 Stored sleep data for ${date}. Ask "how did I sleep?" anytime to see it.`
@@ -349,7 +349,7 @@ export class AssistantService {
     if (!date) return;
 
     if (content && content.length > 0) {
-      this.sleepLogRepository.create(message.from, date, content);
+      this.sleepLogRepository.create({ chatId: message.from, date, rawText: content });
       await this.messagePort.sendMessage(
         message.from,
         `😴 Stored sleep data for ${date}. Ask "how did I sleep?" anytime to see it.`

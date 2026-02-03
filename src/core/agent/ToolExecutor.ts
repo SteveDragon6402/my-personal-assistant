@@ -406,7 +406,18 @@ export class ToolExecutor {
     const rawText = String(input.raw_text ?? '');
     const date = String(input.date ?? new Date().toISOString().split('T')[0]);
 
-    const entry = this.deps.sleepLogRepository.create(this.chatId, date, rawText);
+    const entry = this.deps.sleepLogRepository.create({
+      chatId: this.chatId,
+      date,
+      rawText,
+      sleepScore: this.num(input.sleep_score),
+      timeSleptMinutes: this.num(input.time_slept_minutes),
+      deepSleepMinutes: this.num(input.deep_sleep_minutes),
+      remSleepMinutes: this.num(input.rem_sleep_minutes),
+      rhr: this.num(input.rhr),
+      hrv: this.num(input.hrv),
+      interruptions: this.num(input.interruptions),
+    });
 
     // Trigger morning digest after sleep is logged (fire and forget)
     if (this.deps.morningDigestService) {
@@ -415,14 +426,28 @@ export class ToolExecutor {
       });
     }
 
-    return JSON.stringify({
+    // Build response with available metrics
+    const result: Record<string, unknown> = {
       success: true,
       entry: {
         id: entry.id,
         date: entry.date,
-        raw_text_preview: entry.rawText.slice(0, 200),
       },
-    });
+    };
+
+    if (entry.sleepScore != null) (result.entry as Record<string, unknown>).sleep_score = entry.sleepScore;
+    if (entry.timeSleptMinutes != null) {
+      const hours = Math.floor(entry.timeSleptMinutes / 60);
+      const mins = entry.timeSleptMinutes % 60;
+      (result.entry as Record<string, unknown>).time_slept = `${hours}h ${mins}m`;
+    }
+    if (entry.deepSleepMinutes != null) (result.entry as Record<string, unknown>).deep_sleep_minutes = entry.deepSleepMinutes;
+    if (entry.remSleepMinutes != null) (result.entry as Record<string, unknown>).rem_sleep_minutes = entry.remSleepMinutes;
+    if (entry.rhr != null) (result.entry as Record<string, unknown>).rhr = entry.rhr;
+    if (entry.hrv != null) (result.entry as Record<string, unknown>).hrv = entry.hrv;
+    if (entry.interruptions != null) (result.entry as Record<string, unknown>).interruptions = entry.interruptions;
+
+    return JSON.stringify(result);
   }
 
   // ============================================================================

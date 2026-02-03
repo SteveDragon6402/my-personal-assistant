@@ -91,7 +91,7 @@ export class AgenticAssistant {
           // Add text block (caption or default prompt for meal photo)
           const textBlock: TextContent = {
             type: 'text',
-            text: message.text || 'What is this meal? Please estimate the calories and macros and log it.',
+            text: message.text || 'Identify this meal; estimate calories and macros, then log it.',
           };
           contentBlocks.push(textBlock);
 
