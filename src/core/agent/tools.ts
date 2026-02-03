@@ -104,6 +104,50 @@ export const getMealsRangeTool: ToolDefinition = {
   },
 };
 
+export const deleteMealTool: ToolDefinition = {
+  name: 'delete_meal',
+  description:
+    'Delete a meal. Use when the user asks to remove, delete, or undo a meal. ' +
+    'Provide meal_id to delete that meal (from get_meals_today or get_meals_range). Omit meal_id to delete the most recently logged meal.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      meal_id: {
+        type: 'number',
+        description: 'ID of the meal to delete. Omit to delete the last logged meal.',
+      },
+    },
+  },
+};
+
+export const updateMealTool: ToolDefinition = {
+  name: 'update_meal',
+  description:
+    'Update an existing meal. Use when the user wants to correct or change a logged meal. ' +
+    'Provide meal_id (from get_meals_today or get_meals_range) and only the fields to change.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      meal_id: {
+        type: 'number',
+        description: 'ID of the meal to update',
+      },
+      description: { type: 'string', description: 'Updated description' },
+      date: { type: 'string', description: 'Updated date (YYYY-MM-DD)' },
+      calories: { type: 'number', description: 'Updated calories' },
+      protein: { type: 'number', description: 'Updated protein (g)' },
+      carbs: { type: 'number', description: 'Updated carbs (g)' },
+      fat: { type: 'number', description: 'Updated fat (g)' },
+      meal_type: { type: 'string', description: 'Updated meal type' },
+      time_eaten: {
+        type: 'string',
+        description: 'Updated time eaten (ISO 8601)',
+      },
+    },
+    required: ['meal_id'],
+  },
+};
+
 // ============================================================================
 // HEALTH PROFILE TOOLS
 // ============================================================================
@@ -246,6 +290,48 @@ export const getSleepRangeTool: ToolDefinition = {
       },
     },
     required: ['start_date', 'end_date'],
+  },
+};
+
+export const deleteSleepTool: ToolDefinition = {
+  name: 'delete_sleep',
+  description:
+    'Delete a sleep entry. Use when the user asks to remove, delete, or undo sleep data. ' +
+    'Provide sleep_id to delete that entry (from get_sleep_last_night or get_sleep_range). Omit sleep_id to delete the most recent sleep entry.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      sleep_id: {
+        type: 'number',
+        description: 'ID of the sleep entry to delete. Omit to delete the last logged sleep.',
+      },
+    },
+  },
+};
+
+export const updateSleepTool: ToolDefinition = {
+  name: 'update_sleep',
+  description:
+    'Update an existing sleep entry. Use when the user wants to correct or change logged sleep data. ' +
+    'Provide sleep_id and only the fields to change.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      sleep_id: {
+        type: 'number',
+        description: 'ID of the sleep entry to update',
+      },
+      raw_text: { type: 'string', description: 'Updated raw text' },
+      date: { type: 'string', description: 'Updated date (YYYY-MM-DD)' },
+      sleep_score: { type: 'number', description: 'Updated sleep score (0-100)' },
+      time_slept_minutes: { type: 'number', description: 'Updated time slept (minutes)' },
+      deep_sleep_minutes: { type: 'number', description: 'Updated deep sleep (minutes)' },
+      rem_sleep_minutes: { type: 'number', description: 'Updated REM sleep (minutes)' },
+      rhr: { type: 'number', description: 'Updated resting heart rate (bpm)' },
+      hrv: { type: 'number', description: 'Updated HRV (ms)' },
+      interruptions: { type: 'number', description: 'Updated number of interruptions' },
+    },
+    required: ['sleep_id'],
   },
 };
 
@@ -441,6 +527,28 @@ export const fetchUrlTool: ToolDefinition = {
   },
 };
 
+export const readChatHistoryTool: ToolDefinition = {
+  name: 'read_chat_history',
+  description:
+    'Read recent chat history when the user\'s message is vague or refers to something earlier. ' +
+    'Try to request 3–6 messages first; if you need more context, call again with a higher limit or use offset to go further back.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      limit: {
+        type: 'number',
+        description:
+          'Number of messages to return (user + assistant interleaved). Prefer 3–6 for a first look; use more if needed.',
+      },
+      offset: {
+        type: 'number',
+        description:
+          'Optional. Skip this many most recent messages and return the next batch (older messages). Use to go further back.',
+      },
+    },
+  },
+};
+
 // ============================================================================
 // LOCATION TOOLS
 // ============================================================================
@@ -475,6 +583,8 @@ export const ALL_TOOLS: ToolDefinition[] = [
   logMealTool,
   getMealsTodayTool,
   getMealsRangeTool,
+  deleteMealTool,
+  updateMealTool,
   // Health profile
   getHealthProfileTool,
   setHealthProfileTool,
@@ -484,6 +594,8 @@ export const ALL_TOOLS: ToolDefinition[] = [
   logSleepTool,
   getSleepLastNightTool,
   getSleepRangeTool,
+  deleteSleepTool,
+  updateSleepTool,
   // Location
   setLocationTool,
   // Obsidian
@@ -498,4 +610,5 @@ export const ALL_TOOLS: ToolDefinition[] = [
   updateNoteTool,
   // Utility
   fetchUrlTool,
+  readChatHistoryTool,
 ];

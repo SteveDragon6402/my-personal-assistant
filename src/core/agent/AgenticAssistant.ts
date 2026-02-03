@@ -118,6 +118,7 @@ export class AgenticAssistant {
       sleepDataPort: this.deps.sleepDataPort,
       sleepLogRepository: this.deps.sleepLogRepository,
       mealRepository: this.deps.mealRepository,
+      messageHistoryRepository: this.deps.messageHistoryRepository,
       healthProfileRepository: this.deps.healthProfileRepository,
       userPreferencesRepository: this.deps.userPreferencesRepository,
       morningDigestService: this.deps.morningDigestService,

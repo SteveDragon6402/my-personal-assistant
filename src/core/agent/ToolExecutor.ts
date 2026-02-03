@@ -9,6 +9,7 @@ import type {
 import type { HealthProfileRepository } from '../../persistence/repositories/HealthProfileRepository.js';
 import type { SleepLogRepository } from '../../persistence/repositories/SleepLogRepository.js';
 import type { UserPreferencesRepository } from '../../persistence/repositories/UserPreferencesRepository.js';
+import type { MessageHistoryRepository } from '../../persistence/repositories/MessageHistoryRepository.js';
 import type { MorningDigestService } from '../digest/MorningDigestService.js';
 import { createLogger } from '../../utils/logger.js';
 
@@ -20,6 +21,7 @@ export interface ToolExecutorDependencies {
   mealRepository: MealRepository;
   healthProfileRepository: HealthProfileRepository;
   userPreferencesRepository: UserPreferencesRepository;
+  messageHistoryRepository: MessageHistoryRepository;
   morningDigestService?: MorningDigestService;
 }
 
@@ -47,6 +49,10 @@ export class ToolExecutor {
           return this.getMealsToday();
         case 'get_meals_range':
           return this.getMealsRange(input);
+        case 'delete_meal':
+          return this.deleteMeal(input);
+        case 'update_meal':
+          return this.updateMeal(input);
 
         // Health profile tools
         case 'get_health_profile':
@@ -65,6 +71,10 @@ export class ToolExecutor {
           return this.getSleepLastNight();
         case 'get_sleep_range':
           return this.getSleepRange(input);
+        case 'delete_sleep':
+          return this.deleteSleep(input);
+        case 'update_sleep':
+          return this.updateSleep(input);
 
         // Location tools
         case 'set_location':
@@ -93,6 +103,8 @@ export class ToolExecutor {
         // Utility tools
         case 'fetch_url':
           return this.fetchUrl(input);
+        case 'read_chat_history':
+          return this.readChatHistory(input);
 
         default:
           logger.warn({ toolName }, 'Unknown tool');
@@ -208,6 +220,7 @@ export class ToolExecutor {
   }
 
   private mealToSummary(m: {
+    id?: number;
     description: string;
     date?: string;
     estimatedCalories?: number;
@@ -218,6 +231,7 @@ export class ToolExecutor {
     minerals?: MealMinerals;
   }): Record<string, unknown> {
     const out: Record<string, unknown> = {
+      id: m.id,
       description: m.description,
       calories: m.estimatedCalories,
       protein: m.estimatedProtein,
@@ -302,6 +316,53 @@ export class ToolExecutor {
         date: m.date,
       })),
       totals,
+    });
+  }
+
+  private deleteMeal(input: Record<string, unknown>): string {
+    const mealId = this.num(input.meal_id);
+    if (mealId != null) {
+      const deleted = this.deps.mealRepository.delete(this.chatId, mealId);
+      if (!deleted) {
+        return JSON.stringify({ success: false, message: 'Meal not found or already deleted.' });
+      }
+      return JSON.stringify({ success: true, deleted_meal_id: mealId, message: 'Meal deleted.' });
+    }
+    const last = this.deps.mealRepository.deleteLast(this.chatId);
+    if (!last) {
+      return JSON.stringify({ success: false, message: 'No meals to delete.' });
+    }
+    return JSON.stringify({
+      success: true,
+      deleted_meal_id: last.id,
+      message: `Deleted: ${last.description} (${last.date}).`,
+    });
+  }
+
+  private updateMeal(input: Record<string, unknown>): string {
+    const mealId = this.num(input.meal_id);
+    if (mealId == null) {
+      return JSON.stringify({ success: false, message: 'meal_id is required.' });
+    }
+    const partial: Parameters<MealRepository['update']>[2] = {};
+    if (typeof input.description === 'string') partial.description = input.description;
+    if (typeof input.date === 'string') partial.date = input.date;
+    if (this.num(input.calories) != null) partial.estimatedCalories = this.num(input.calories)!;
+    if (this.num(input.protein) != null) partial.estimatedProtein = this.num(input.protein)!;
+    if (this.num(input.carbs) != null) partial.estimatedCarbs = this.num(input.carbs)!;
+    if (this.num(input.fat) != null) partial.estimatedFat = this.num(input.fat)!;
+    if (typeof input.meal_type === 'string') partial.mealType = input.meal_type;
+    if (typeof input.time_eaten === 'string') {
+      const parsed = Date.parse(input.time_eaten);
+      if (!Number.isNaN(parsed)) partial.timeEaten = parsed;
+    }
+    const updated = this.deps.mealRepository.update(this.chatId, mealId, partial);
+    if (!updated) {
+      return JSON.stringify({ success: false, message: 'Meal not found.' });
+    }
+    return JSON.stringify({
+      success: true,
+      meal: this.mealToSummary({ ...updated, vitamins: updated.vitamins, minerals: updated.minerals }),
     });
   }
 
@@ -492,6 +553,7 @@ export class ToolExecutor {
     return JSON.stringify({
       found: true,
       sleep: {
+        id: sleepData.id,
         date: sleepData.date,
         score: sleepData.sleepScore,
         deep_sleep_minutes: sleepData.deepSleepMinutes,
@@ -533,11 +595,67 @@ export class ToolExecutor {
       total_deep_sleep_minutes: totalDeep,
       total_rem_sleep_minutes: totalRem,
       sessions: sleepData.map((s) => ({
+        id: s.id,
         date: s.date,
         score: s.sleepScore,
         deep_minutes: s.deepSleepMinutes,
         rem_minutes: s.remSleepMinutes,
       })),
+    });
+  }
+
+  private deleteSleep(input: Record<string, unknown>): string {
+    const sleepId = this.num(input.sleep_id);
+    if (sleepId != null) {
+      const deleted = this.deps.sleepLogRepository.delete(this.chatId, sleepId);
+      if (!deleted) {
+        return JSON.stringify({ success: false, message: 'Sleep entry not found or already deleted.' });
+      }
+      return JSON.stringify({ success: true, deleted_sleep_id: sleepId, message: 'Sleep entry deleted.' });
+    }
+    const last = this.deps.sleepLogRepository.deleteLast(this.chatId);
+    if (!last) {
+      return JSON.stringify({ success: false, message: 'No sleep entries to delete.' });
+    }
+    return JSON.stringify({
+      success: true,
+      deleted_sleep_id: last.id,
+      message: `Deleted sleep entry for ${last.date}.`,
+    });
+  }
+
+  private updateSleep(input: Record<string, unknown>): string {
+    const sleepId = this.num(input.sleep_id);
+    if (sleepId == null) {
+      return JSON.stringify({ success: false, message: 'sleep_id is required.' });
+    }
+    const partial: Parameters<SleepLogRepository['update']>[2] = {};
+    if (typeof input.raw_text === 'string') partial.rawText = input.raw_text;
+    if (typeof input.date === 'string') partial.date = input.date;
+    if (this.num(input.sleep_score) != null) partial.sleepScore = this.num(input.sleep_score)!;
+    if (this.num(input.time_slept_minutes) != null) partial.timeSleptMinutes = this.num(input.time_slept_minutes)!;
+    if (this.num(input.deep_sleep_minutes) != null) partial.deepSleepMinutes = this.num(input.deep_sleep_minutes)!;
+    if (this.num(input.rem_sleep_minutes) != null) partial.remSleepMinutes = this.num(input.rem_sleep_minutes)!;
+    if (this.num(input.rhr) != null) partial.rhr = this.num(input.rhr)!;
+    if (this.num(input.hrv) != null) partial.hrv = this.num(input.hrv)!;
+    if (this.num(input.interruptions) != null) partial.interruptions = this.num(input.interruptions)!;
+    const updated = this.deps.sleepLogRepository.update(this.chatId, sleepId, partial);
+    if (!updated) {
+      return JSON.stringify({ success: false, message: 'Sleep entry not found.' });
+    }
+    return JSON.stringify({
+      success: true,
+      entry: {
+        id: updated.id,
+        date: updated.date,
+        sleep_score: updated.sleepScore,
+        time_slept_minutes: updated.timeSleptMinutes,
+        deep_sleep_minutes: updated.deepSleepMinutes,
+        rem_sleep_minutes: updated.remSleepMinutes,
+        rhr: updated.rhr,
+        hrv: updated.hrv,
+        interruptions: updated.interruptions,
+      },
     });
   }
 
@@ -755,6 +873,36 @@ export class ToolExecutor {
         url,
       });
     }
+  }
+
+  private readChatHistory(input: Record<string, unknown>): string {
+    const limit = this.num(input.limit);
+    const offset = this.num(input.offset) ?? 0;
+    const effectiveLimit = limit != null && limit > 0 ? Math.min(limit, 50) : 6;
+    const effectiveOffset = offset != null && offset >= 0 ? offset : 0;
+
+    const messages = this.deps.messageHistoryRepository.getConversation(
+      this.chatId,
+      effectiveLimit,
+      effectiveOffset
+    );
+
+    if (messages.length === 0) {
+      return JSON.stringify({
+        found: false,
+        message: effectiveOffset > 0 ? 'No older messages in that range.' : 'No chat history yet.',
+      });
+    }
+
+    return JSON.stringify({
+      found: true,
+      count: messages.length,
+      messages: messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+        timestamp: m.timestamp.toISOString(),
+      })),
+    });
   }
 
   private extractTitle(html: string): string {

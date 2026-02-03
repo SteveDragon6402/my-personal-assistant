@@ -6,6 +6,7 @@ function entryToSleepData(entry: SleepLogEntry): SleepData {
   // If we have structured data, use it; otherwise fall back to parsing raw text
   if (entry.sleepScore != null || entry.timeSleptMinutes != null) {
     return {
+      id: entry.id,
       date: entry.date,
       sleepScore: entry.sleepScore ?? 0,
       deepSleepMinutes: entry.deepSleepMinutes ?? 0,
@@ -22,7 +23,8 @@ function entryToSleepData(entry: SleepLogEntry): SleepData {
 
   // Fall back to parsing raw text for legacy entries
   const parsed = parseSleepText(entry.rawText, entry.date);
-  return parsed ?? {
+  return parsed ? { ...parsed, id: entry.id } : {
+    id: entry.id,
     date: entry.date,
     sleepScore: 0,
     deepSleepMinutes: 0,

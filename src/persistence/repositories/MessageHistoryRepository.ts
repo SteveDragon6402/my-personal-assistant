@@ -76,27 +76,28 @@ export class MessageHistoryRepository {
   /**
    * Get conversation history for a chat, interleaving user messages and assistant responses
    * in chronological order (oldest first).
+   * @param limit - Max number of messages to return. Prefer 3–6 for a first look; request more if needed.
+   * @param offset - When > 0, fetch the next batch back: skip the most recent `offset` messages and return the next `limit` (older) messages.
    */
-  getConversation(chatId: string, limit = 20): ConversationMessage[] {
-    // Get user messages
+  getConversation(chatId: string, limit = 10, offset = 0): ConversationMessage[] {
+    const fetchLimit = offset > 0 ? limit + offset : limit;
+
     const userStmt = this.db.prepare(
       'SELECT text, timestamp FROM messages WHERE from_number = ? ORDER BY timestamp DESC LIMIT ?'
     );
-    const userRows = userStmt.all(chatId, limit) as Array<{
+    const userRows = userStmt.all(chatId, fetchLimit) as Array<{
       text: string;
       timestamp: number;
     }>;
 
-    // Get assistant responses
     const assistantStmt = this.db.prepare(
       'SELECT text, timestamp FROM assistant_responses WHERE chat_id = ? ORDER BY timestamp DESC LIMIT ?'
     );
-    const assistantRows = assistantStmt.all(chatId, limit) as Array<{
+    const assistantRows = assistantStmt.all(chatId, fetchLimit) as Array<{
       text: string;
       timestamp: number;
     }>;
 
-    // Combine and sort by timestamp (oldest first for conversation flow)
     const allMessages: ConversationMessage[] = [
       ...userRows.map((row) => ({
         role: 'user' as const,
@@ -110,11 +111,13 @@ export class MessageHistoryRepository {
       })),
     ];
 
-    // Sort by timestamp ascending (oldest first)
     allMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
-    // Return the most recent 'limit' messages
-    return allMessages.slice(-limit);
+    const recent = allMessages.slice(-fetchLimit);
+    if (offset > 0) {
+      return recent.slice(0, limit);
+    }
+    return recent.slice(-limit);
   }
 
   getLatestSender(): string | null {

@@ -119,6 +119,91 @@ export class MealRepository {
     const rows = stmt.all(chatId, startDate, endDate) as MealRow[];
     return rows.map((row) => rowToMeal(row));
   }
+
+  getById(chatId: string, mealId: number): Meal | null {
+    const row = this.db
+      .prepare('SELECT * FROM meals WHERE id = ? AND (chat_id = ? OR chat_id IS NULL)')
+      .get(mealId, chatId) as MealRow | undefined;
+    if (!row) return null;
+    return rowToMeal(row);
+  }
+
+  delete(chatId: string, mealId: number): boolean {
+    const result = this.db.prepare('DELETE FROM meals WHERE id = ? AND (chat_id = ? OR chat_id IS NULL)').run(mealId, chatId);
+    return result.changes > 0;
+  }
+
+  deleteLast(chatId: string): Meal | null {
+    const row = this.db
+      .prepare(
+        'SELECT * FROM meals WHERE (chat_id = ? OR chat_id IS NULL) ORDER BY date DESC, created_at DESC LIMIT 1'
+      )
+      .get(chatId) as MealRow | undefined;
+    if (!row) return null;
+    this.db.prepare('DELETE FROM meals WHERE id = ?').run(row.id);
+    return rowToMeal(row);
+  }
+
+  /** Update only provided fields. Returns updated meal or null if not found. */
+  update(
+    chatId: string,
+    mealId: number,
+    partial: Partial<{
+      description: string;
+      date: string;
+      estimatedCalories: number;
+      estimatedProtein: number;
+      estimatedCarbs: number;
+      estimatedFat: number;
+      mealType: string;
+      timeEaten: number;
+    }>
+  ): Meal | null {
+    const existing = this.getById(chatId, mealId);
+    if (!existing) return null;
+
+    const updates: string[] = [];
+    const values: unknown[] = [];
+
+    if (partial.description !== undefined) {
+      updates.push('description = ?');
+      values.push(partial.description);
+    }
+    if (partial.date !== undefined) {
+      updates.push('date = ?');
+      values.push(partial.date);
+    }
+    if (partial.estimatedCalories !== undefined) {
+      updates.push('estimated_calories = ?');
+      values.push(partial.estimatedCalories);
+    }
+    if (partial.estimatedProtein !== undefined) {
+      updates.push('estimated_protein = ?');
+      values.push(partial.estimatedProtein);
+    }
+    if (partial.estimatedCarbs !== undefined) {
+      updates.push('estimated_carbs = ?');
+      values.push(partial.estimatedCarbs);
+    }
+    if (partial.estimatedFat !== undefined) {
+      updates.push('estimated_fat = ?');
+      values.push(partial.estimatedFat);
+    }
+    if (partial.mealType !== undefined) {
+      updates.push('meal_type = ?');
+      values.push(partial.mealType);
+    }
+    if (partial.timeEaten !== undefined) {
+      updates.push('time_eaten = ?');
+      values.push(partial.timeEaten);
+    }
+
+    if (updates.length === 0) return existing;
+
+    values.push(mealId, chatId);
+    this.db.prepare(`UPDATE meals SET ${updates.join(', ')} WHERE id = ? AND (chat_id = ? OR chat_id IS NULL)`).run(...values);
+    return this.getById(chatId, mealId);
+  }
 }
 
 type MealRow = {

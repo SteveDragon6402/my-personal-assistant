@@ -1,4 +1,5 @@
 export interface SleepData {
+  id?: number; // Entry id (for delete/update)
   date: string; // ISO date
   sleepScore: number;
   deepSleepMinutes: number;
