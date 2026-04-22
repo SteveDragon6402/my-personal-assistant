@@ -37,8 +37,12 @@ async function main(): Promise<void> {
     const notesAdapter = config.obsidianVaultPath
       ? new ObsidianAdapter(config)
       : new DisabledNotesAdapter();
-    const llmAdapter = config.anthropicApiKey ? new ClaudeAdapter(config) : new DisabledLLMAdapter();
-    const haikuAdapter = config.anthropicApiKey ? new HaikuAdapter(config) : new DisabledLLMAdapter();
+    const llmAdapter = config.anthropicApiKey
+      ? new ClaudeAdapter(config)
+      : new DisabledLLMAdapter();
+    const haikuAdapter = config.anthropicApiKey
+      ? new HaikuAdapter(config)
+      : new DisabledLLMAdapter();
     const sleepLogRepository = new SleepLogRepository();
     const sleepAdapter = new StoredSleepAdapter(sleepLogRepository);
     const emailAdapter = new GmailAdapter(config);

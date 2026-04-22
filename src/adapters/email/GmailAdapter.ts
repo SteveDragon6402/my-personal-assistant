@@ -3,6 +3,7 @@ import type { Config } from '../../config/index.js';
 import { createLogger } from '../../utils/logger.js';
 import { AdapterError } from '../../utils/errors.js';
 import { extractNewsletter, type GmailMessage } from './NewsletterExtractor.js';
+import { withRetry } from '../../utils/retry.js';
 
 interface GmailListResponse {
   messages?: Array<{ id: string; threadId: string }>;
@@ -59,16 +60,20 @@ export class GmailAdapter implements EmailPort {
     if (!this.clientId || !this.clientSecret || !this.refreshToken) {
       throw new Error('Missing Gmail OAuth credentials');
     }
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
-        refresh_token: this.refreshToken,
-        grant_type: 'refresh_token',
-      }),
-    });
+    const response = await withRetry(
+      () =>
+        fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: this.clientId!,
+            client_secret: this.clientSecret!,
+            refresh_token: this.refreshToken!,
+            grant_type: 'refresh_token',
+          }),
+        }),
+      { maxAttempts: 3 }
+    );
 
     if (!response.ok) {
       const text = await response.text();
@@ -83,9 +88,13 @@ export class GmailAdapter implements EmailPort {
   }
 
   private async gmailRequest<T>(url: string, accessToken: string): Promise<T> {
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    const response = await withRetry(
+      () =>
+        fetch(url, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }),
+      { maxAttempts: 2 }
+    );
 
     if (!response.ok) {
       const text = await response.text();

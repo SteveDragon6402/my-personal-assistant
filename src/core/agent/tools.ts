@@ -155,7 +155,7 @@ export const updateMealTool: ToolDefinition = {
 export const getHealthProfileTool: ToolDefinition = {
   name: 'get_health_profile',
   description:
-    'Get the user\'s health profile (height, weight, gender, age). Use this when giving nutrition or meal recommendations so you can account for BMI and personal context.',
+    "Get the user's health profile (height, weight, gender, age). Use this when giving nutrition or meal recommendations so you can account for BMI and personal context.",
   input_schema: {
     type: 'object',
     properties: {},
@@ -165,7 +165,7 @@ export const getHealthProfileTool: ToolDefinition = {
 export const setHealthProfileTool: ToolDefinition = {
   name: 'set_health_profile',
   description:
-    'Record or update the user\'s health profile: height (cm), weight (kg), gender, age. Use when the user shares this info. Only provided fields are updated.',
+    "Record or update the user's health profile: height (cm), weight (kg), gender, age. Use when the user shares this info. Only provided fields are updated.",
   input_schema: {
     type: 'object',
     properties: {
@@ -461,7 +461,8 @@ export const readDailyNoteTool: ToolDefinition = {
     properties: {
       date: {
         type: 'string',
-        description: 'Optional date in ISO format (YYYY-MM-DD). Defaults to today if not specified.',
+        description:
+          'Optional date in ISO format (YYYY-MM-DD). Defaults to today if not specified.',
       },
     },
   },
@@ -471,7 +472,7 @@ export const listNotesTool: ToolDefinition = {
   name: 'list_notes',
   description:
     'List all notes in a folder, sorted by most recently modified. Use this when the user ' +
-    'wants to browse their notes or see what\'s in a specific category.',
+    "wants to browse their notes or see what's in a specific category.",
   input_schema: {
     type: 'object',
     properties: {
@@ -530,7 +531,7 @@ export const fetchUrlTool: ToolDefinition = {
 export const readChatHistoryTool: ToolDefinition = {
   name: 'read_chat_history',
   description:
-    'Read recent chat history when the user\'s message is vague or refers to something earlier. ' +
+    "Read recent chat history when the user's message is vague or refers to something earlier. " +
     'Try to request 3–6 messages first; if you need more context, call again with a higher limit or use offset to go further back.',
   input_schema: {
     type: 'object',
@@ -550,13 +551,28 @@ export const readChatHistoryTool: ToolDefinition = {
 };
 
 // ============================================================================
+// DATE / TIME
+// ============================================================================
+
+export const getCurrentDateTool: ToolDefinition = {
+  name: 'get_current_date',
+  description:
+    "Get the current date and time in the user's timezone. " +
+    "Call this whenever you need to know what 'today' is—e.g. for date ranges, 'last 3 days', answering 'what date is it?', or before using get_meals_today / get_sleep_last_night so you use the correct day.",
+  input_schema: {
+    type: 'object',
+    properties: {},
+  },
+};
+
+// ============================================================================
 // LOCATION TOOLS
 // ============================================================================
 
 export const setLocationTool: ToolDefinition = {
   name: 'set_location',
   description:
-    'Set the user\'s location (latitude and longitude) for weather in the morning digest. ' +
+    "Set the user's location (latitude and longitude) for weather in the morning digest. " +
     'Use this when the user tells you their city or location.',
   input_schema: {
     type: 'object',
@@ -609,6 +625,7 @@ export const ALL_TOOLS: ToolDefinition[] = [
   listNotesTool,
   updateNoteTool,
   // Utility
+  getCurrentDateTool,
   fetchUrlTool,
   readChatHistoryTool,
 ];

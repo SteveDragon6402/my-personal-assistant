@@ -1,4 +1,5 @@
 import { createLogger } from '../../utils/logger.js';
+import { withRetry } from '../../utils/retry.js';
 
 export interface FeedItem {
   source: string;
@@ -24,7 +25,10 @@ const FEEDS: FeedConfig[] = [
   { name: 'Ribbonfarm', url: 'https://www.ribbonfarm.com/feed/' },
   { name: 'Crooked Timber', url: 'https://crookedtimber.org/feed/' },
   { name: 'Duck of Minerva', url: 'https://www.duckofminerva.com/feed' },
-  { name: 'Calculated Risk', url: 'https://www.calculatedriskblog.com/feeds/posts/default?alt=rss' },
+  {
+    name: 'Calculated Risk',
+    url: 'https://www.calculatedriskblog.com/feeds/posts/default?alt=rss',
+  },
   { name: 'Epsilon Theory', url: 'https://www.epsilontheory.com/feed/' },
 ];
 
@@ -35,9 +39,7 @@ export class RSSAdapter {
     const logger = this.logger.child({ method: 'fetchAll' });
     logger.info({ feedCount: FEEDS.length }, 'Fetching RSS feeds');
 
-    const results = await Promise.allSettled(
-      FEEDS.map((feed) => this.fetchFeed(feed))
-    );
+    const results = await Promise.allSettled(FEEDS.map((feed) => this.fetchFeed(feed)));
 
     const items: FeedItem[] = [];
     for (let i = 0; i < results.length; i++) {
@@ -65,13 +67,17 @@ export class RSSAdapter {
   private async fetchFeed(feed: FeedConfig): Promise<FeedItem[]> {
     const logger = this.logger.child({ method: 'fetchFeed', feed: feed.name });
 
-    const response = await fetch(feed.url, {
-      headers: {
-        'User-Agent': 'PersonalAssistant/1.0 (RSS Reader)',
-        Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml',
-      },
-      signal: AbortSignal.timeout(10000),
-    });
+    const response = await withRetry(
+      () =>
+        fetch(feed.url, {
+          headers: {
+            'User-Agent': 'PersonalAssistant/1.0 (RSS Reader)',
+            Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml',
+          },
+          signal: AbortSignal.timeout(10000),
+        }),
+      { maxAttempts: 2, initialDelayMs: 500 }
+    );
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -112,9 +118,12 @@ export class RSSAdapter {
       const atomEntries = this.extractMatches(xml, /<entry[^>]*>([\s\S]*?)<\/entry>/gi);
       for (const entryXml of atomEntries) {
         const title = this.extractTag(entryXml, 'title');
-        const link = this.extractAttr(entryXml, 'link', 'href') || this.extractTag(entryXml, 'link');
-        const published = this.extractTag(entryXml, 'published') || this.extractTag(entryXml, 'updated');
-        const summary = this.extractTag(entryXml, 'summary') || this.extractTag(entryXml, 'content');
+        const link =
+          this.extractAttr(entryXml, 'link', 'href') || this.extractTag(entryXml, 'link');
+        const published =
+          this.extractTag(entryXml, 'published') || this.extractTag(entryXml, 'updated');
+        const summary =
+          this.extractTag(entryXml, 'summary') || this.extractTag(entryXml, 'content');
 
         if (title && link) {
           items.push({
@@ -142,7 +151,10 @@ export class RSSAdapter {
 
   private extractTag(xml: string, tagName: string): string | null {
     // Handle CDATA
-    const cdataRegex = new RegExp(`<${tagName}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tagName}>`, 'i');
+    const cdataRegex = new RegExp(
+      `<${tagName}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tagName}>`,
+      'i'
+    );
     const cdataMatch = xml.match(cdataRegex);
     if (cdataMatch?.[1]) return cdataMatch[1];
 

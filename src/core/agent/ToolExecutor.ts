@@ -12,6 +12,7 @@ import type { UserPreferencesRepository } from '../../persistence/repositories/U
 import type { MessageHistoryRepository } from '../../persistence/repositories/MessageHistoryRepository.js';
 import type { MorningDigestService } from '../digest/MorningDigestService.js';
 import { createLogger } from '../../utils/logger.js';
+import { withRetry } from '../../utils/retry.js';
 
 export interface ToolExecutorDependencies {
   notesPort: NotesPort;
@@ -101,6 +102,8 @@ export class ToolExecutor {
           return this.updateNote(input);
 
         // Utility tools
+        case 'get_current_date':
+          return this.getCurrentDate();
         case 'fetch_url':
           return this.fetchUrl(input);
         case 'read_chat_history':
@@ -250,14 +253,35 @@ export class ToolExecutor {
     const vitamins: MealVitamins = {};
     const minerals: MealMinerals = {};
     const vitKeys: (keyof MealVitamins)[] = [
-      'vitaminA', 'vitaminC', 'vitaminD', 'vitaminE', 'vitaminK', 'vitaminB6', 'vitaminB12', 'folate',
+      'vitaminA',
+      'vitaminC',
+      'vitaminD',
+      'vitaminE',
+      'vitaminK',
+      'vitaminB6',
+      'vitaminB12',
+      'folate',
     ];
     const minKeys: (keyof MealMinerals)[] = [
-      'iron', 'calcium', 'magnesium', 'zinc', 'potassium', 'selenium', 'iodine',
+      'iron',
+      'calcium',
+      'magnesium',
+      'zinc',
+      'potassium',
+      'selenium',
+      'iodine',
     ];
     for (const m of meals) {
-      if (m.vitamins) for (const k of vitKeys) if (m.vitamins[k] != null) (vitamins as Record<string, number>)[k] = ((vitamins as Record<string, number>)[k] ?? 0) + m.vitamins[k]!;
-      if (m.minerals) for (const k of minKeys) if (m.minerals[k] != null) (minerals as Record<string, number>)[k] = ((minerals as Record<string, number>)[k] ?? 0) + m.minerals[k]!;
+      if (m.vitamins)
+        for (const k of vitKeys)
+          if (m.vitamins[k] != null)
+            (vitamins as Record<string, number>)[k] =
+              ((vitamins as Record<string, number>)[k] ?? 0) + m.vitamins[k];
+      if (m.minerals)
+        for (const k of minKeys)
+          if (m.minerals[k] != null)
+            (minerals as Record<string, number>)[k] =
+              ((minerals as Record<string, number>)[k] ?? 0) + m.minerals[k];
     }
     const out: { vitamins?: MealVitamins; minerals?: MealMinerals } = {};
     if (Object.keys(vitamins).length) out.vitamins = vitamins;
@@ -286,7 +310,9 @@ export class ToolExecutor {
 
     return JSON.stringify({
       date: today,
-      meals: meals.map((m) => this.mealToSummary({ ...m, vitamins: m.vitamins, minerals: m.minerals })),
+      meals: meals.map((m) =>
+        this.mealToSummary({ ...m, vitamins: m.vitamins, minerals: m.minerals })
+      ),
       totals,
     });
   }
@@ -362,7 +388,11 @@ export class ToolExecutor {
     }
     return JSON.stringify({
       success: true,
-      meal: this.mealToSummary({ ...updated, vitamins: updated.vitamins, minerals: updated.minerals }),
+      meal: this.mealToSummary({
+        ...updated,
+        vitamins: updated.vitamins,
+        minerals: updated.minerals,
+      }),
     });
   }
 
@@ -375,7 +405,8 @@ export class ToolExecutor {
     if (!profile) {
       return JSON.stringify({
         found: false,
-        message: 'No health profile set. The user can set height, weight, gender, and age with set_health_profile.',
+        message:
+          'No health profile set. The user can set height, weight, gender, and age with set_health_profile.',
       });
     }
     const out: Record<string, unknown> = {
@@ -402,11 +433,14 @@ export class ToolExecutor {
     const heightCm = this.num(input.height_cm);
     const weightKg = this.num(input.weight_kg);
     const gender =
-      typeof input.gender === 'string' && input.gender.trim()
-        ? input.gender.trim()
-        : undefined;
+      typeof input.gender === 'string' && input.gender.trim() ? input.gender.trim() : undefined;
     const age = this.num(input.age);
-    if (heightCm === undefined && weightKg === undefined && gender === undefined && age === undefined) {
+    if (
+      heightCm === undefined &&
+      weightKg === undefined &&
+      gender === undefined &&
+      age === undefined
+    ) {
       return JSON.stringify({
         success: false,
         message: 'Provide at least one of: height_cm, weight_kg, gender, age.',
@@ -496,17 +530,21 @@ export class ToolExecutor {
       },
     };
 
-    if (entry.sleepScore != null) (result.entry as Record<string, unknown>).sleep_score = entry.sleepScore;
+    if (entry.sleepScore != null)
+      (result.entry as Record<string, unknown>).sleep_score = entry.sleepScore;
     if (entry.timeSleptMinutes != null) {
       const hours = Math.floor(entry.timeSleptMinutes / 60);
       const mins = entry.timeSleptMinutes % 60;
       (result.entry as Record<string, unknown>).time_slept = `${hours}h ${mins}m`;
     }
-    if (entry.deepSleepMinutes != null) (result.entry as Record<string, unknown>).deep_sleep_minutes = entry.deepSleepMinutes;
-    if (entry.remSleepMinutes != null) (result.entry as Record<string, unknown>).rem_sleep_minutes = entry.remSleepMinutes;
+    if (entry.deepSleepMinutes != null)
+      (result.entry as Record<string, unknown>).deep_sleep_minutes = entry.deepSleepMinutes;
+    if (entry.remSleepMinutes != null)
+      (result.entry as Record<string, unknown>).rem_sleep_minutes = entry.remSleepMinutes;
     if (entry.rhr != null) (result.entry as Record<string, unknown>).rhr = entry.rhr;
     if (entry.hrv != null) (result.entry as Record<string, unknown>).hrv = entry.hrv;
-    if (entry.interruptions != null) (result.entry as Record<string, unknown>).interruptions = entry.interruptions;
+    if (entry.interruptions != null)
+      (result.entry as Record<string, unknown>).interruptions = entry.interruptions;
 
     return JSON.stringify(result);
   }
@@ -609,9 +647,16 @@ export class ToolExecutor {
     if (sleepId != null) {
       const deleted = this.deps.sleepLogRepository.delete(this.chatId, sleepId);
       if (!deleted) {
-        return JSON.stringify({ success: false, message: 'Sleep entry not found or already deleted.' });
+        return JSON.stringify({
+          success: false,
+          message: 'Sleep entry not found or already deleted.',
+        });
       }
-      return JSON.stringify({ success: true, deleted_sleep_id: sleepId, message: 'Sleep entry deleted.' });
+      return JSON.stringify({
+        success: true,
+        deleted_sleep_id: sleepId,
+        message: 'Sleep entry deleted.',
+      });
     }
     const last = this.deps.sleepLogRepository.deleteLast(this.chatId);
     if (!last) {
@@ -633,12 +678,16 @@ export class ToolExecutor {
     if (typeof input.raw_text === 'string') partial.rawText = input.raw_text;
     if (typeof input.date === 'string') partial.date = input.date;
     if (this.num(input.sleep_score) != null) partial.sleepScore = this.num(input.sleep_score)!;
-    if (this.num(input.time_slept_minutes) != null) partial.timeSleptMinutes = this.num(input.time_slept_minutes)!;
-    if (this.num(input.deep_sleep_minutes) != null) partial.deepSleepMinutes = this.num(input.deep_sleep_minutes)!;
-    if (this.num(input.rem_sleep_minutes) != null) partial.remSleepMinutes = this.num(input.rem_sleep_minutes)!;
+    if (this.num(input.time_slept_minutes) != null)
+      partial.timeSleptMinutes = this.num(input.time_slept_minutes)!;
+    if (this.num(input.deep_sleep_minutes) != null)
+      partial.deepSleepMinutes = this.num(input.deep_sleep_minutes)!;
+    if (this.num(input.rem_sleep_minutes) != null)
+      partial.remSleepMinutes = this.num(input.rem_sleep_minutes)!;
     if (this.num(input.rhr) != null) partial.rhr = this.num(input.rhr)!;
     if (this.num(input.hrv) != null) partial.hrv = this.num(input.hrv)!;
-    if (this.num(input.interruptions) != null) partial.interruptions = this.num(input.interruptions)!;
+    if (this.num(input.interruptions) != null)
+      partial.interruptions = this.num(input.interruptions)!;
     const updated = this.deps.sleepLogRepository.update(this.chatId, sleepId, partial);
     if (!updated) {
       return JSON.stringify({ success: false, message: 'Sleep entry not found.' });
@@ -827,13 +876,17 @@ export class ToolExecutor {
 
     try {
       logger.info('Fetching URL');
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; PersonalAssistantBot/1.0)',
-          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        },
-        signal: AbortSignal.timeout(15000), // 15s timeout
-      });
+      const response = await withRetry(
+        () =>
+          fetch(url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (compatible; PersonalAssistantBot/1.0)',
+              Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            },
+            signal: AbortSignal.timeout(15000),
+          }),
+        { maxAttempts: 2, initialDelayMs: 500 }
+      );
 
       if (!response.ok) {
         logger.warn({ status: response.status }, 'Failed to fetch URL');
@@ -846,7 +899,7 @@ export class ToolExecutor {
       const html = await response.text();
       const title = this.extractTitle(html);
       const text = this.extractTextFromHtml(html);
-      
+
       // Limit content to avoid token overflow (roughly 12k chars)
       const maxLength = 12000;
       const truncated = text.length > maxLength;
@@ -873,6 +926,34 @@ export class ToolExecutor {
         url,
       });
     }
+  }
+
+  private getCurrentDate(): string {
+    const prefs = this.deps.userPreferencesRepository.getOrDefault(this.chatId, {
+      timezone: 'UTC',
+    });
+    const tz = prefs.timezone ?? 'UTC';
+    const now = new Date();
+    const dateOnly = now.toLocaleDateString('en-CA', { timeZone: tz }); // YYYY-MM-DD
+    const friendly = now.toLocaleDateString('en-GB', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      timeZone: tz,
+    });
+    const timeOnly = now.toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: tz,
+    });
+    return JSON.stringify({
+      timezone: tz,
+      date: dateOnly,
+      date_friendly: friendly,
+      time: timeOnly,
+      iso: now.toISOString(),
+    });
   }
 
   private readChatHistory(input: Record<string, unknown>): string {

@@ -17,6 +17,7 @@ rsync -avz --delete \
   --exclude .git \
   --exclude .npm-cache \
   --exclude dist \
+  --exclude vault \
   . "${VPS_USER}@${VPS_HOST}:${REMOTE_DIR}/"
 
 echo "==> Installing, building, and restarting on VPS (may take 1–2 min; deprecation warnings are normal)"

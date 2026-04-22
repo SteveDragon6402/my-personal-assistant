@@ -50,7 +50,10 @@ export class HealthProfileRepository {
   /**
    * Set or update health profile fields. Only provided fields are updated; others are preserved.
    */
-  upsert(chatId: string, data: Partial<Omit<HealthProfile, 'chatId' | 'updatedAt'>>): HealthProfile {
+  upsert(
+    chatId: string,
+    data: Partial<Omit<HealthProfile, 'chatId' | 'updatedAt'>>
+  ): HealthProfile {
     const existing = this.get(chatId);
     const merged: Omit<HealthProfile, 'updatedAt'> = {
       chatId,

@@ -94,9 +94,7 @@ export class SleepLogRepository {
 
   getLastNight(chatId: string): SleepLogEntry | null {
     const row = this.db
-      .prepare(
-        `SELECT * FROM sleep_log WHERE chat_id = ? ORDER BY date DESC LIMIT 1`
-      )
+      .prepare(`SELECT * FROM sleep_log WHERE chat_id = ? ORDER BY date DESC LIMIT 1`)
       .get(chatId) as SleepLogRow | undefined;
     if (!row) return null;
     return rowToEntry(row);
@@ -121,13 +119,17 @@ export class SleepLogRepository {
   }
 
   delete(chatId: string, entryId: number): boolean {
-    const result = this.db.prepare('DELETE FROM sleep_log WHERE id = ? AND chat_id = ?').run(entryId, chatId);
+    const result = this.db
+      .prepare('DELETE FROM sleep_log WHERE id = ? AND chat_id = ?')
+      .run(entryId, chatId);
     return result.changes > 0;
   }
 
   deleteLast(chatId: string): SleepLogEntry | null {
     const row = this.db
-      .prepare('SELECT * FROM sleep_log WHERE chat_id = ? ORDER BY date DESC, created_at DESC LIMIT 1')
+      .prepare(
+        'SELECT * FROM sleep_log WHERE chat_id = ? ORDER BY date DESC, created_at DESC LIMIT 1'
+      )
       .get(chatId) as SleepLogRow | undefined;
     if (!row) return null;
     this.db.prepare('DELETE FROM sleep_log WHERE id = ?').run(row.id);
@@ -196,7 +198,9 @@ export class SleepLogRepository {
     if (updates.length === 0) return existing;
 
     values.push(entryId, chatId);
-    this.db.prepare(`UPDATE sleep_log SET ${updates.join(', ')} WHERE id = ? AND chat_id = ?`).run(...values);
+    this.db
+      .prepare(`UPDATE sleep_log SET ${updates.join(', ')} WHERE id = ? AND chat_id = ?`)
+      .run(...values);
     return this.getById(chatId, entryId);
   }
 }

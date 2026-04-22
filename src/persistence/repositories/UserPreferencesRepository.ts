@@ -34,18 +34,20 @@ export class UserPreferencesRepository {
         `SELECT chat_id, digest_time, timezone, include_sleep, include_newsletters, include_calendar, include_capture_review, lat, lon, updated_at
          FROM user_preferences WHERE chat_id = ?`
       )
-      .get(chatId) as {
-      chat_id: string;
-      digest_time: string | null;
-      timezone: string | null;
-      include_sleep: number;
-      include_newsletters: number;
-      include_calendar: number;
-      include_capture_review: number;
-      lat: number | null;
-      lon: number | null;
-      updated_at: number;
-    } | undefined;
+      .get(chatId) as
+      | {
+          chat_id: string;
+          digest_time: string | null;
+          timezone: string | null;
+          include_sleep: number;
+          include_newsletters: number;
+          include_calendar: number;
+          include_capture_review: number;
+          lat: number | null;
+          lon: number | null;
+          updated_at: number;
+        }
+      | undefined;
 
     if (!row) return null;
     return {
@@ -62,7 +64,10 @@ export class UserPreferencesRepository {
     };
   }
 
-  getOrDefault(chatId: string, defaults: { digestTime?: string; timezone?: string }): UserPreferences {
+  getOrDefault(
+    chatId: string,
+    defaults: { digestTime?: string; timezone?: string }
+  ): UserPreferences {
     const existing = this.get(chatId);
     if (existing) return existing;
     return {
@@ -81,7 +86,8 @@ export class UserPreferencesRepository {
     const includeSleep = prefs.includeSleep ?? existing?.includeSleep ?? true;
     const includeNewsletters = prefs.includeNewsletters ?? existing?.includeNewsletters ?? true;
     const includeCalendar = prefs.includeCalendar ?? existing?.includeCalendar ?? true;
-    const includeCaptureReview = prefs.includeCaptureReview ?? existing?.includeCaptureReview ?? true;
+    const includeCaptureReview =
+      prefs.includeCaptureReview ?? existing?.includeCaptureReview ?? true;
     const lat = prefs.lat ?? existing?.lat ?? null;
     const lon = prefs.lon ?? existing?.lon ?? null;
 
@@ -115,7 +121,9 @@ export class UserPreferencesRepository {
 
   /** Chat IDs that have ever had preferences set (for digest scheduling). */
   getAllChatIds(): string[] {
-    const rows = this.db.prepare('SELECT chat_id FROM user_preferences').all() as { chat_id: string }[];
+    const rows = this.db.prepare('SELECT chat_id FROM user_preferences').all() as {
+      chat_id: string;
+    }[];
     return rows.map((r) => r.chat_id);
   }
 }

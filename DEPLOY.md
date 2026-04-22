@@ -12,7 +12,7 @@ Create `.env` on the server (or set in systemd). Required for webhook:
 - **`PORT`** – Optional; default is **5000** (Caddy proxies to `localhost:5000`).
 - **`HOST`** – Optional; default is **0.0.0.0** so the app listens on all interfaces.
 
-Optional (digest, capture, etc.): `ANTHROPIC_API_KEY`, `OBSIDIAN_VAULT_PATH`, Gmail/Calendar vars, etc. See `.env.example` and README.
+Optional (digest, capture, etc.): `ANTHROPIC_API_KEY`, `OBSIDIAN_VAULT_PATH`, Gmail/Calendar vars, etc. See `.env.example` and README. To give the bot access to Obsidian on your laptop via the VPS, use Syncthing: see **docs/OBSIDIAN_SYNC.md**.
 
 ## 2. Set Telegram webhook
 

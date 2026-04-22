@@ -1,5 +1,8 @@
 import type { SleepDataPort, SleepData } from '../../ports/SleepDataPort.js';
-import type { SleepLogRepository, SleepLogEntry } from '../../persistence/repositories/SleepLogRepository.js';
+import type {
+  SleepLogRepository,
+  SleepLogEntry,
+} from '../../persistence/repositories/SleepLogRepository.js';
 import { parseSleepText } from './sleepTextParser.js';
 
 function entryToSleepData(entry: SleepLogEntry): SleepData {
@@ -23,19 +26,21 @@ function entryToSleepData(entry: SleepLogEntry): SleepData {
 
   // Fall back to parsing raw text for legacy entries
   const parsed = parseSleepText(entry.rawText, entry.date);
-  return parsed ? { ...parsed, id: entry.id } : {
-    id: entry.id,
-    date: entry.date,
-    sleepScore: 0,
-    deepSleepMinutes: 0,
-    remSleepMinutes: 0,
-    timeAsleep: 0,
-    timeToBed: '',
-    timeAwake: '',
-    hrv: 0,
-    restingHeartRate: 0,
-    rawText: entry.rawText,
-  };
+  return parsed
+    ? { ...parsed, id: entry.id }
+    : {
+        id: entry.id,
+        date: entry.date,
+        sleepScore: 0,
+        deepSleepMinutes: 0,
+        remSleepMinutes: 0,
+        timeAsleep: 0,
+        timeToBed: '',
+        timeAwake: '',
+        hrv: 0,
+        restingHeartRate: 0,
+        rawText: entry.rawText,
+      };
 }
 
 export class StoredSleepAdapter implements SleepDataPort {
@@ -48,11 +53,7 @@ export class StoredSleepAdapter implements SleepDataPort {
     return entryToSleepData(entry);
   }
 
-  async getRange(
-    startDate: string,
-    endDate: string,
-    chatId?: string
-  ): Promise<SleepData[]> {
+  async getRange(startDate: string, endDate: string, chatId?: string): Promise<SleepData[]> {
     if (!chatId) return [];
     const entries = this.sleepLogRepository.getRange(chatId, startDate, endDate);
     return entries.map(entryToSleepData);

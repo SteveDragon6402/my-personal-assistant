@@ -41,7 +41,7 @@ export interface NotesPort {
   appendToPending(content: string, meta?: PendingCaptureMeta): Promise<void>;
   searchNotes(query: string): Promise<Array<{ title: string; excerpt: string; path: string }>>;
   getTasks(filter?: { status?: 'open' | 'done'; project?: string }): Promise<Task[]>;
-  
+
   // New methods for full read/edit capabilities
   readNote(path: string): Promise<NoteContent | null>;
   readDailyNote(date?: string): Promise<NoteContent | null>;

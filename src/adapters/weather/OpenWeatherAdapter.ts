@@ -1,6 +1,7 @@
 import type { WeatherPort, WeatherData, HourlyForecast } from '../../ports/WeatherPort.js';
 import type { Config } from '../../config/index.js';
 import { createLogger } from '../../utils/logger.js';
+import { withRetry } from '../../utils/retry.js';
 
 interface OpenWeatherCurrent {
   temp: number;
@@ -53,9 +54,13 @@ export class OpenWeatherAdapter implements WeatherPort {
 
     logger.info('Fetching weather data');
 
-    const response = await fetch(url, {
-      signal: AbortSignal.timeout(10000),
-    });
+    const response = await withRetry(
+      () =>
+        fetch(url, {
+          signal: AbortSignal.timeout(10000),
+        }),
+      { maxAttempts: 3 }
+    );
 
     if (!response.ok) {
       logger.error({ status: response.status }, 'OpenWeather API request failed');
@@ -84,12 +89,14 @@ export class OpenWeatherAdapter implements WeatherPort {
         sunrise: this.formatTime(today?.sunrise ?? 0),
         sunset: this.formatTime(today?.sunset ?? 0),
       },
-      hourly: hourlyForecasts.map((h): HourlyForecast => ({
-        hour: this.formatTime(h.dt),
-        temp: Math.round(h.temp),
-        rainChance: Math.round(h.pop * 100),
-        description: h.weather[0]?.description ?? 'unknown',
-      })),
+      hourly: hourlyForecasts.map(
+        (h): HourlyForecast => ({
+          hour: this.formatTime(h.dt),
+          temp: Math.round(h.temp),
+          rainChance: Math.round(h.pop * 100),
+          description: h.weather[0]?.description ?? 'unknown',
+        })
+      ),
     };
 
     logger.info({ temp: weatherData.current.temp }, 'Weather data fetched');

@@ -1,8 +1,16 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { LLMPort, LLMRequest, LLMResponse, VisionRequest, ToolUseRequest, ToolUseResponse } from '../../ports/LLMPort.js';
+import type {
+  LLMPort,
+  LLMRequest,
+  LLMResponse,
+  VisionRequest,
+  ToolUseRequest,
+  ToolUseResponse,
+} from '../../ports/LLMPort.js';
 import type { Config } from '../../config/index.js';
 import { createLogger } from '../../utils/logger.js';
 import { LLMError } from '../../utils/errors.js';
+import { withRetry } from '../../utils/retry.js';
 
 /**
  * Haiku adapter for cheap, fast text generation (digest summaries).
@@ -15,25 +23,29 @@ export class HaikuAdapter implements LLMPort {
 
   constructor(config: Config) {
     this.client = new Anthropic({ apiKey: config.anthropicApiKey });
-    this.model = config.llmDigestModel ?? 'claude-3-5-haiku-20241022';
+    this.model = config.llmDigestModel ?? 'claude-haiku-4-5';
     this.logger.info({ model: this.model }, 'Haiku adapter initialized');
   }
 
   async generateText(request: LLMRequest): Promise<LLMResponse> {
     const logger = this.logger.child({ method: 'generateText' });
     try {
-      const response = await this.client.messages.create({
-        model: this.model,
-        max_tokens: request.maxTokens ?? 600,
-        temperature: request.temperature ?? 0.3,
-        system: request.systemPrompt,
-        messages: [
-          {
-            role: 'user',
-            content: request.prompt,
-          },
-        ],
-      });
+      const response = await withRetry(
+        () =>
+          this.client.messages.create({
+            model: this.model,
+            max_tokens: request.maxTokens ?? 600,
+            temperature: request.temperature ?? 0.3,
+            system: request.systemPrompt,
+            messages: [
+              {
+                role: 'user',
+                content: request.prompt,
+              },
+            ],
+          }),
+        { maxAttempts: 3 }
+      );
 
       const text = this.extractText(response);
       const usage = response.usage

@@ -8,6 +8,7 @@ vi.mock('node-telegram-bot-api', () => {
   const mockBot = {
     getMe: vi.fn(),
     setWebHook: vi.fn(),
+    startPolling: vi.fn().mockResolvedValue(undefined),
     sendMessage: vi.fn(),
     getFile: vi.fn(),
     on: vi.fn(),
@@ -178,9 +179,10 @@ describe('TelegramAdapter', () => {
     });
 
     it('should set up webhook if URL is provided', async () => {
+      const webhookUrl = 'https://example.com/webhook/telegram';
       const configWithWebhook: Config = {
         ...mockConfig,
-        telegramWebhookUrl: 'https://example.com',
+        telegramWebhookUrl: webhookUrl,
       };
 
       const mockBotInfo: TelegramBot.User = {
@@ -196,7 +198,7 @@ describe('TelegramAdapter', () => {
       const adapter = new TelegramAdapter(configWithWebhook);
       await adapter.initialize();
 
-      expect(mockBot.setWebHook).toHaveBeenCalledWith('https://example.com/webhook/telegram');
+      expect(mockBot.setWebHook).toHaveBeenCalledWith(webhookUrl);
     });
   });
 });

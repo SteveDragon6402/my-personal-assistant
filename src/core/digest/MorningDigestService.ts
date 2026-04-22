@@ -113,13 +113,16 @@ export class MorningDigestService {
     // Combine sections
     const sections: string[] = [];
 
-    sections.push('☀️ Good morning! Here\'s your daily brief:\n');
+    sections.push("☀️ Good morning! Here's your daily brief:\n");
 
     // Weather
     if (weatherSection.status === 'fulfilled' && weatherSection.value) {
       sections.push('🌤️ WEATHER\n' + weatherSection.value);
     } else {
-      logger.warn({ error: weatherSection.status === 'rejected' ? weatherSection.reason : 'no location' }, 'Weather section failed');
+      logger.warn(
+        { error: weatherSection.status === 'rejected' ? weatherSection.reason : 'no location' },
+        'Weather section failed'
+      );
       sections.push('🌤️ WEATHER\nSet your location to get weather updates.');
     }
 
@@ -127,10 +130,13 @@ export class MorningDigestService {
 
     // Health
     if (healthSection.status === 'fulfilled' && healthSection.value) {
-      sections.push('💪 TODAY\'S FOCUS\n' + healthSection.value);
+      sections.push("💪 TODAY'S FOCUS\n" + healthSection.value);
     } else {
-      logger.warn({ error: healthSection.status === 'rejected' ? healthSection.reason : 'unknown' }, 'Health section failed');
-      sections.push('💪 TODAY\'S FOCUS\nStay hydrated and move your body today.');
+      logger.warn(
+        { error: healthSection.status === 'rejected' ? healthSection.reason : 'unknown' },
+        'Health section failed'
+      );
+      sections.push("💪 TODAY'S FOCUS\nStay hydrated and move your body today.");
     }
 
     sections.push('');
@@ -139,8 +145,11 @@ export class MorningDigestService {
     if (rssSection.status === 'fulfilled' && rssSection.value) {
       sections.push('📰 MUST-READ\n' + rssSection.value);
     } else {
-      logger.warn({ error: rssSection.status === 'rejected' ? rssSection.reason : 'unknown' }, 'RSS section failed');
-      sections.push('📰 MUST-READ\nCouldn\'t fetch headlines today.');
+      logger.warn(
+        { error: rssSection.status === 'rejected' ? rssSection.reason : 'unknown' },
+        'RSS section failed'
+      );
+      sections.push("📰 MUST-READ\nCouldn't fetch headlines today.");
     }
 
     const digest = sections.join('\n');
@@ -311,9 +320,7 @@ export class MorningDigestService {
         link: string;
       }>;
 
-      return picks
-        .map((p) => `${p.category}: ${p.headline}\n${p.pitch}\n${p.link}`)
-        .join('\n\n');
+      return picks.map((p) => `${p.category}: ${p.headline}\n${p.pitch}\n${p.link}`).join('\n\n');
     } catch {
       // If JSON parse fails, return raw response
       logger.warn('Failed to parse RSS JSON, returning raw response');

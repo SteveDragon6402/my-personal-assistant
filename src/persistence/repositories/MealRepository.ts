@@ -129,7 +129,9 @@ export class MealRepository {
   }
 
   delete(chatId: string, mealId: number): boolean {
-    const result = this.db.prepare('DELETE FROM meals WHERE id = ? AND (chat_id = ? OR chat_id IS NULL)').run(mealId, chatId);
+    const result = this.db
+      .prepare('DELETE FROM meals WHERE id = ? AND (chat_id = ? OR chat_id IS NULL)')
+      .run(mealId, chatId);
     return result.changes > 0;
   }
 
@@ -201,7 +203,11 @@ export class MealRepository {
     if (updates.length === 0) return existing;
 
     values.push(mealId, chatId);
-    this.db.prepare(`UPDATE meals SET ${updates.join(', ')} WHERE id = ? AND (chat_id = ? OR chat_id IS NULL)`).run(...values);
+    this.db
+      .prepare(
+        `UPDATE meals SET ${updates.join(', ')} WHERE id = ? AND (chat_id = ? OR chat_id IS NULL)`
+      )
+      .run(...values);
     return this.getById(chatId, mealId);
   }
 }

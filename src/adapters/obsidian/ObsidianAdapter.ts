@@ -1,6 +1,12 @@
 import { mkdir, readdir, readFile, appendFile, writeFile, stat } from 'node:fs/promises';
 import { join, extname, basename, dirname, relative } from 'node:path';
-import type { NotesPort, NoteCategory, Task, NoteContent, NoteListItem } from '../../ports/NotesPort.js';
+import type {
+  NotesPort,
+  NoteCategory,
+  Task,
+  NoteContent,
+  NoteListItem,
+} from '../../ports/NotesPort.js';
 import type { Config } from '../../config/index.js';
 import { createLogger } from '../../utils/logger.js';
 import { NotesError } from '../../utils/errors.js';
@@ -93,7 +99,11 @@ export class ObsidianAdapter implements NotesPort {
       await mkdir(dirname(dailyPath), { recursive: true });
       await appendFile(dailyPath, entry, 'utf8');
       logger.info(
-        { dailyPath: relative(this.vaultPath, dailyPath), contentLength: content.length, entryLength: entry.length },
+        {
+          dailyPath: relative(this.vaultPath, dailyPath),
+          contentLength: content.length,
+          entryLength: entry.length,
+        },
         'Appended to daily note'
       );
     } catch (error) {
@@ -131,7 +141,9 @@ export class ObsidianAdapter implements NotesPort {
     }
   }
 
-  async searchNotes(query: string): Promise<Array<{ title: string; excerpt: string; path: string }>> {
+  async searchNotes(
+    query: string
+  ): Promise<Array<{ title: string; excerpt: string; path: string }>> {
     const logger = this.logger.child({ method: 'searchNotes', query });
     if (!query.trim()) {
       return [];
@@ -294,7 +306,7 @@ export class ObsidianAdapter implements NotesPort {
     try {
       // Check if file exists first
       await readFile(fullPath, 'utf8');
-      
+
       // Write the updated content
       await writeFile(fullPath, content, 'utf8');
       logger.info({ contentLength: content.length }, 'Updated note');

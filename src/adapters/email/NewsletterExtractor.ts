@@ -46,7 +46,10 @@ export function extractNewsletter(message: GmailMessage): Newsletter | null {
   };
 }
 
-function getHeader(headers: Array<{ name: string; value: string }> | undefined, name: string): string | null {
+function getHeader(
+  headers: Array<{ name: string; value: string }> | undefined,
+  name: string
+): string | null {
   if (!headers) {
     return null;
   }

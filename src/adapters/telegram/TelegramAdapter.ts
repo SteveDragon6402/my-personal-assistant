@@ -142,7 +142,10 @@ export class TelegramAdapter implements MessagePort {
         return;
       }
 
-      logger.info({ messageId: incomingMessage.id, from: incomingMessage.from }, 'Processing webhook message');
+      logger.info(
+        { messageId: incomingMessage.id, from: incomingMessage.from },
+        'Processing webhook message'
+      );
 
       // Notify all handlers
       await Promise.all(this.messageHandlers.map((handler) => handler(incomingMessage)));
@@ -202,9 +205,17 @@ export class TelegramAdapter implements MessagePort {
     if (mediaType) {
       incomingMessage.mediaType = mediaType;
     }
-    const forwardFrom = (msg as TelegramBot.Message & { forward_sender_name?: string; forward_from?: { username?: string; first_name?: string } }).forward_sender_name
-      ?? (msg as TelegramBot.Message & { forward_from?: { username?: string; first_name?: string } }).forward_from?.username
-      ?? (msg as TelegramBot.Message & { forward_from?: { first_name?: string } }).forward_from?.first_name;
+    const forwardFrom =
+      (
+        msg as TelegramBot.Message & {
+          forward_sender_name?: string;
+          forward_from?: { username?: string; first_name?: string };
+        }
+      ).forward_sender_name ??
+      (msg as TelegramBot.Message & { forward_from?: { username?: string; first_name?: string } })
+        .forward_from?.username ??
+      (msg as TelegramBot.Message & { forward_from?: { first_name?: string } }).forward_from
+        ?.first_name;
     if (forwardFrom) {
       incomingMessage.forwardedFrom = forwardFrom;
     }

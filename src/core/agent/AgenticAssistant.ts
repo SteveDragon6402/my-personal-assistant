@@ -1,5 +1,11 @@
 import type { MessagePort, IncomingMessage } from '../../ports/MessagePort.js';
-import type { LLMPort, Message, ContentBlock, ImageContent, TextContent } from '../../ports/LLMPort.js';
+import type {
+  LLMPort,
+  Message,
+  ContentBlock,
+  ImageContent,
+  TextContent,
+} from '../../ports/LLMPort.js';
 import type { NotesPort } from '../../ports/NotesPort.js';
 import type { EmailPort } from '../../ports/EmailPort.js';
 import type { SleepDataPort } from '../../ports/SleepDataPort.js';
@@ -15,6 +21,9 @@ import { createLogger } from '../../utils/logger.js';
 import { clearCorrelationId, generateCorrelationId, setCorrelationId } from '../../utils/logger.js';
 
 const MAX_TOOL_ITERATIONS = 10;
+const CONVERSATION_CONTEXT_MESSAGES = 4;
+/** Allow enough tokens for many tool calls in one turn (e.g. 10+ log_meal calls at ~200 tokens each) */
+const MAX_RESPONSE_TOKENS = 4096;
 
 export interface AgenticAssistantDependencies {
   messagePort: MessagePort;
@@ -103,13 +112,32 @@ export class AgenticAssistant {
       }
     }
 
-    // Process only the current message (no history to avoid re-running old commands)
-    const messages: Message[] = [
-      {
-        role: 'user',
-        content: userContent,
-      },
-    ];
+    // Build messages with conversation context
+    const messages: Message[] = [];
+
+    // Add recent conversation history for context (excluding the current message which will be added below)
+    const recentHistory = this.deps.messageHistoryRepository.getConversation(
+      chatId,
+      CONVERSATION_CONTEXT_MESSAGES
+    );
+    // Filter out the current message if it was already saved
+    const historyWithoutCurrent = recentHistory.filter(
+      (m) => m.role !== 'user' || m.content !== message.text
+    );
+    for (const historyMsg of historyWithoutCurrent) {
+      messages.push({
+        role: historyMsg.role,
+        content: historyMsg.content,
+      });
+    }
+
+    // Add the current user message
+    messages.push({
+      role: 'user',
+      content: userContent,
+    });
+
+    logger.debug({ contextMessages: historyWithoutCurrent.length }, 'Added conversation context');
 
     // Create tool executor for this chat
     const toolExecutorDeps: ToolExecutorDependencies = {
@@ -133,7 +161,7 @@ export class AgenticAssistant {
       messages,
       tools: ALL_TOOLS,
       systemPrompt: this.deps.systemPrompt,
-      maxTokens: 1024,
+      maxTokens: MAX_RESPONSE_TOKENS,
     });
 
     // Accumulate usage from first call
@@ -188,7 +216,7 @@ export class AgenticAssistant {
         messages,
         tools: ALL_TOOLS,
         systemPrompt: this.deps.systemPrompt,
-        maxTokens: 1024,
+        maxTokens: MAX_RESPONSE_TOKENS,
       });
 
       // Accumulate usage from this iteration

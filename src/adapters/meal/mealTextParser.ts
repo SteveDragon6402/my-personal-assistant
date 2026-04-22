@@ -10,22 +10,10 @@ export interface ParsedMeal {
   fat?: number;
 }
 
-const CAL_PATTERNS = [
-  /(\d+)\s*(?:cal|kcal|calories?)\b/i,
-  /\b(\d+)\s*(?:cal|kcal)\s*(?:\s|$)/i,
-];
-const PROTEIN_PATTERNS = [
-  /(\d+)\s*g?\s*p\b/i,
-  /(\d+)\s*(?:g\s*)?protein\b/i,
-];
-const CARBS_PATTERNS = [
-  /(\d+)\s*g?\s*c\b/i,
-  /(\d+)\s*(?:g\s*)?carbs?\b/i,
-];
-const FAT_PATTERNS = [
-  /(\d+)\s*g?\s*f\b/i,
-  /(\d+)\s*(?:g\s*)?fat\b/i,
-];
+const CAL_PATTERNS = [/(\d+)\s*(?:cal|kcal|calories?)\b/i, /\b(\d+)\s*(?:cal|kcal)\s*(?:\s|$)/i];
+const PROTEIN_PATTERNS = [/(\d+)\s*g?\s*p\b/i, /(\d+)\s*(?:g\s*)?protein\b/i];
+const CARBS_PATTERNS = [/(\d+)\s*g?\s*c\b/i, /(\d+)\s*(?:g\s*)?carbs?\b/i];
+const FAT_PATTERNS = [/(\d+)\s*g?\s*f\b/i, /(\d+)\s*(?:g\s*)?fat\b/i];
 
 export function parseMealText(text: string): ParsedMeal {
   const t = text.trim();

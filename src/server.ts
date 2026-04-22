@@ -32,10 +32,12 @@ export async function startServer(
   });
 
   // Error handling
-  app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    logger.error({ error: err }, 'Unhandled error in Express');
-    res.status(500).json({ error: 'Internal server error' });
-  });
+  app.use(
+    (err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+      logger.error({ error: err }, 'Unhandled error in Express');
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  );
 
   return new Promise((resolve) => {
     app.listen(port, host, () => {
