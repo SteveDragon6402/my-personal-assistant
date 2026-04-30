@@ -33,7 +33,9 @@ describe('TelegramAdapter', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockBot = TelegramBot(mockConfig.telegramBotToken, {}) as unknown as ReturnType<typeof TelegramBot>;
+    mockBot = TelegramBot(mockConfig.telegramBotToken, {}) as unknown as ReturnType<
+      typeof TelegramBot
+    >;
   });
 
   describe('parseTelegramMessage', () => {

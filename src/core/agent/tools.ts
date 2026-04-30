@@ -13,10 +13,10 @@ export const logMealTool: ToolDefinition = {
   name: 'log_meal',
   description:
     'Log a meal the user ate. Use this when the user tells you what they ate. ' +
-    'Estimate calories and macros (protein, carbs, fat) and, when you can, key vitamins and minerals. ' +
-    'Vitamins: A (mcg RAE), C (mg), D (mcg), E (mg), K (mcg), B6 (mg), B12 (mcg), folate (mcg DFE). ' +
-    'Minerals: iron, calcium, magnesium, zinc, potassium (mg); selenium, iodine (mcg). All micros are optional estimates. ' +
-    'Classify the meal_type based on context (e.g., "breakfast", "lunch", "dinner", "snack", "late night snack"). ' +
+    'Always prioritize asking clarifying questions FIRST if the meal description is vague or lacks portion sizes. ' +
+    'You MUST ALWAYS estimate calories, all three macros (protein, carbs, fat), and estimate across all the micros (vitamins and minerals specified below). ' +
+    'Always estimate on a per item granular basis for accuracy. ' +
+    'Classify the meal_type based on context (e.g., "breakfast", "lunch", "dinner", "snack"). ' +
     'If the user mentions when they ate (e.g., "I had eggs this morning at 8am"), set time_eaten accordingly.',
   input_schema: {
     type: 'object',
@@ -145,6 +145,77 @@ export const updateMealTool: ToolDefinition = {
       },
     },
     required: ['meal_id'],
+  },
+};
+
+// ============================================================================
+// WEIGHT TOOLS
+// ============================================================================
+
+export const logWeightTool: ToolDefinition = {
+  name: 'log_weight',
+  description: "Log the user's weight for a specific date. Store it on the specific day logged.",
+  input_schema: {
+    type: 'object',
+    properties: {
+      weight_kg: { type: 'number', description: 'Weight in kilograms' },
+      date: { type: 'string', description: 'Date (YYYY-MM-DD)' },
+      notes: { type: 'string', description: 'Optional context or notes' },
+    },
+    required: ['weight_kg', 'date'],
+  },
+};
+
+export const getWeightLastTool: ToolDefinition = {
+  name: 'get_weight_last',
+  description: 'Get the most recently logged weight entry.',
+  input_schema: {
+    type: 'object',
+    properties: {},
+  },
+};
+
+export const getWeightRangeTool: ToolDefinition = {
+  name: 'get_weight_range',
+  description: 'Get weight logs within a date range for analysis.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      start_date: { type: 'string', description: 'Start date (YYYY-MM-DD)' },
+      end_date: { type: 'string', description: 'End date (YYYY-MM-DD)' },
+    },
+    required: ['start_date', 'end_date'],
+  },
+};
+
+export const deleteWeightTool: ToolDefinition = {
+  name: 'delete_weight',
+  description:
+    'Delete a weight log. Provide weight_id to delete that log. Omit weight_id to delete the most recent weight log.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      weight_id: {
+        type: 'number',
+        description: 'ID of the weight entry to delete. Omit to delete last logged.',
+      },
+    },
+  },
+};
+
+export const updateWeightTool: ToolDefinition = {
+  name: 'update_weight',
+  description:
+    'Update an existing weight log entry. Provide weight_id and only the fields to change. Let AI edit this log or add to it later.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      weight_id: { type: 'number', description: 'ID of the weight log to update' },
+      weight_kg: { type: 'number', description: 'Updated weight in kg' },
+      date: { type: 'string', description: 'Updated date (YYYY-MM-DD)' },
+      notes: { type: 'string', description: 'Updated notes' },
+    },
+    required: ['weight_id'],
   },
 };
 
@@ -601,6 +672,12 @@ export const ALL_TOOLS: ToolDefinition[] = [
   getMealsRangeTool,
   deleteMealTool,
   updateMealTool,
+  // Weight logs
+  logWeightTool,
+  getWeightLastTool,
+  getWeightRangeTool,
+  deleteWeightTool,
+  updateWeightTool,
   // Health profile
   getHealthProfileTool,
   setHealthProfileTool,
@@ -615,15 +692,15 @@ export const ALL_TOOLS: ToolDefinition[] = [
   // Location
   setLocationTool,
   // Obsidian
-  createNoteTool,
-  appendToDailyTool,
-  searchNotesTool,
-  getTasksTool,
-  getCategoriesTool,
-  readNoteTool,
-  readDailyNoteTool,
-  listNotesTool,
-  updateNoteTool,
+  // createNoteTool,
+  // appendToDailyTool,
+  // searchNotesTool,
+  // getTasksTool,
+  // getCategoriesTool,
+  // readNoteTool,
+  // readDailyNoteTool,
+  // listNotesTool,
+  // updateNoteTool,
   // Utility
   getCurrentDateTool,
   fetchUrlTool,

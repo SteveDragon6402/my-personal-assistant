@@ -38,9 +38,9 @@ describe('withRetry', () => {
     vi.useRealTimers();
     const fn = vi.fn().mockRejectedValue(new Error('always fails'));
 
-    await expect(
-      withRetry(fn, { maxAttempts: 3, initialDelayMs: 1 })
-    ).rejects.toThrow('always fails');
+    await expect(withRetry(fn, { maxAttempts: 3, initialDelayMs: 1 })).rejects.toThrow(
+      'always fails'
+    );
     expect(fn).toHaveBeenCalledTimes(3);
   });
 
@@ -74,10 +74,7 @@ describe('withRetry', () => {
   });
 
   it('should respect maxDelayMs cap', async () => {
-    const fn = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('fail'))
-      .mockResolvedValue('success');
+    const fn = vi.fn().mockRejectedValueOnce(new Error('fail')).mockResolvedValue('success');
 
     const resultPromise = withRetry(fn, {
       maxAttempts: 2,

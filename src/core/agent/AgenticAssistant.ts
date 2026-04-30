@@ -13,6 +13,7 @@ import type { MessageHistoryRepository } from '../../persistence/repositories/Me
 import type { MealRepository } from '../../persistence/repositories/MealRepository.js';
 import type { HealthProfileRepository } from '../../persistence/repositories/HealthProfileRepository.js';
 import type { SleepLogRepository } from '../../persistence/repositories/SleepLogRepository.js';
+import type { WeightLogRepository } from '../../persistence/repositories/WeightLogRepository.js';
 import type { UserPreferencesRepository } from '../../persistence/repositories/UserPreferencesRepository.js';
 import type { MorningDigestService } from '../digest/MorningDigestService.js';
 import { ToolExecutor, type ToolExecutorDependencies } from './ToolExecutor.js';
@@ -32,6 +33,7 @@ export interface AgenticAssistantDependencies {
   emailPort: EmailPort;
   sleepDataPort: SleepDataPort;
   sleepLogRepository: SleepLogRepository;
+  weightLogRepository: WeightLogRepository;
   mealRepository: MealRepository;
   healthProfileRepository: HealthProfileRepository;
   userPreferencesRepository: UserPreferencesRepository;
@@ -145,6 +147,7 @@ export class AgenticAssistant {
       emailPort: this.deps.emailPort,
       sleepDataPort: this.deps.sleepDataPort,
       sleepLogRepository: this.deps.sleepLogRepository,
+      weightLogRepository: this.deps.weightLogRepository,
       mealRepository: this.deps.mealRepository,
       messageHistoryRepository: this.deps.messageHistoryRepository,
       healthProfileRepository: this.deps.healthProfileRepository,

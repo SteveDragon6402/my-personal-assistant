@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AgenticAssistant, type AgenticAssistantDependencies } from '../../core/agent/AgenticAssistant.js';
+import {
+  AgenticAssistant,
+  type AgenticAssistantDependencies,
+} from '../../core/agent/AgenticAssistant.js';
 import type { MessagePort, IncomingMessage } from '../../ports/MessagePort.js';
 import type { LLMPort, ToolUseResponse } from '../../ports/LLMPort.js';
 import type { NotesPort } from '../../ports/NotesPort.js';
@@ -143,12 +146,8 @@ describe('AgenticAssistant', () => {
   it('should handle tool use loop', async () => {
     const toolUseResponse: ToolUseResponse = {
       stopReason: 'tool_use',
-      toolCalls: [
-        { id: 'tool-1', name: 'get_current_date', input: {} },
-      ],
-      contentBlocks: [
-        { type: 'tool_use', id: 'tool-1', name: 'get_current_date', input: {} },
-      ],
+      toolCalls: [{ id: 'tool-1', name: 'get_current_date', input: {} }],
+      contentBlocks: [{ type: 'tool_use', id: 'tool-1', name: 'get_current_date', input: {} }],
       usage: { inputTokens: 100, outputTokens: 50 },
     };
 
@@ -194,11 +193,11 @@ describe('AgenticAssistant', () => {
     await messageHandler(message);
 
     expect(deps.messagePort.getMediaUrl).toHaveBeenCalledWith('file-id-123');
-    
+
     const llmCall = vi.mocked(deps.llmPort.generateWithTools).mock.calls[0]![0];
     const lastMessage = llmCall.messages[llmCall.messages.length - 1];
     expect(Array.isArray(lastMessage?.content)).toBe(true);
-    
+
     const content = lastMessage?.content as Array<{ type: string }>;
     expect(content.some((c) => c.type === 'image')).toBe(true);
     expect(content.some((c) => c.type === 'text')).toBe(true);

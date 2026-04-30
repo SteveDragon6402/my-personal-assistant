@@ -39,10 +39,9 @@ describe('GmailAdapter', () => {
         new Response(JSON.stringify({ access_token: 'token' }), { status: 200 })
       )
       .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ messages: [{ id: 'msg-1', threadId: 't-1' }] }),
-          { status: 200 }
-        )
+        new Response(JSON.stringify({ messages: [{ id: 'msg-1', threadId: 't-1' }] }), {
+          status: 200,
+        })
       )
       .mockResolvedValueOnce(
         new Response(

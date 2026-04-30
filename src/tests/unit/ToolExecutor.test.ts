@@ -49,7 +49,9 @@ describe('ToolExecutor', () => {
         getByDate: vi.fn().mockReturnValue([]),
         getByDateRange: vi.fn().mockReturnValue([]),
         delete: vi.fn().mockReturnValue(true),
-        deleteLast: vi.fn().mockReturnValue({ id: 1, description: 'last meal', date: '2026-02-20' }),
+        deleteLast: vi
+          .fn()
+          .mockReturnValue({ id: 1, description: 'last meal', date: '2026-02-20' }),
         update: vi.fn().mockReturnValue({ id: 1, description: 'updated' }),
       } as unknown as MealRepository,
       healthProfileRepository: {

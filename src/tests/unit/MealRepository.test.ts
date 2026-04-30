@@ -8,7 +8,7 @@ describe('MealRepository', () => {
 
   beforeEach(() => {
     db = new Database(':memory:');
-    
+
     db.exec(`
       CREATE TABLE meals (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -139,9 +139,9 @@ describe('MealRepository', () => {
   describe('delete', () => {
     it('should delete meal by id', () => {
       const meal = repo.create({ chatId: '123', date: '2026-02-20', description: 'To delete' });
-      
+
       const deleted = repo.delete('123', meal.id!);
-      
+
       expect(deleted).toBe(true);
       expect(repo.getByDate('123', '2026-02-20')).toHaveLength(0);
     });
@@ -153,9 +153,9 @@ describe('MealRepository', () => {
 
     it('should not delete meal from different chat', () => {
       const meal = repo.create({ chatId: '123', date: '2026-02-20', description: 'Test' });
-      
+
       const deleted = repo.delete('456', meal.id!);
-      
+
       expect(deleted).toBe(false);
       expect(repo.getByDate('123', '2026-02-20')).toHaveLength(1);
     });

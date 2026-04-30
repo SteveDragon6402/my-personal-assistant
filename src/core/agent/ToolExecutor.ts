@@ -8,6 +8,7 @@ import type {
 } from '../../persistence/repositories/MealRepository.js';
 import type { HealthProfileRepository } from '../../persistence/repositories/HealthProfileRepository.js';
 import type { SleepLogRepository } from '../../persistence/repositories/SleepLogRepository.js';
+import type { WeightLogRepository } from '../../persistence/repositories/WeightLogRepository.js';
 import type { UserPreferencesRepository } from '../../persistence/repositories/UserPreferencesRepository.js';
 import type { MessageHistoryRepository } from '../../persistence/repositories/MessageHistoryRepository.js';
 import type { MorningDigestService } from '../digest/MorningDigestService.js';
@@ -19,6 +20,7 @@ export interface ToolExecutorDependencies {
   emailPort: EmailPort;
   sleepDataPort: SleepDataPort;
   sleepLogRepository: SleepLogRepository;
+  weightLogRepository: WeightLogRepository;
   mealRepository: MealRepository;
   healthProfileRepository: HealthProfileRepository;
   userPreferencesRepository: UserPreferencesRepository;
@@ -60,6 +62,18 @@ export class ToolExecutor {
           return this.getHealthProfile();
         case 'set_health_profile':
           return this.setHealthProfile(input);
+
+        // Weight tools
+        case 'log_weight':
+          return this.logWeight(input);
+        case 'get_weight_last':
+          return this.getWeightLast();
+        case 'get_weight_range':
+          return this.getWeightRange(input);
+        case 'delete_weight':
+          return this.deleteWeight(input);
+        case 'update_weight':
+          return this.updateWeight(input);
 
         // Email tools
         case 'get_newsletters':
@@ -469,6 +483,78 @@ export class ToolExecutor {
       out.bmi = Math.round((profile.weightKg / (heightM * heightM)) * 10) / 10;
     }
     return JSON.stringify(out);
+  }
+
+  // ============================================================================
+  // WEIGHT TOOLS
+  // ============================================================================
+
+  private logWeight(input: Record<string, unknown>): string {
+    const weightKg = this.num(input.weight_kg);
+    if (weightKg == null)
+      return JSON.stringify({ success: false, message: 'weight_kg is required' });
+    const date = String(input.date ?? new Date().toISOString().split('T')[0]);
+    const notes = typeof input.notes === 'string' ? input.notes : undefined;
+
+    const id = this.deps.weightLogRepository.save({
+      chatId: this.chatId,
+      date,
+      weightKg,
+      notes,
+    });
+
+    this.deps.healthProfileRepository.upsert(this.chatId, { weightKg });
+
+    return JSON.stringify({ success: true, weight_id: id, date, weight_kg: weightKg });
+  }
+
+  private getWeightLast(): string {
+    const log = this.deps.weightLogRepository.getLast(this.chatId);
+    if (!log) return JSON.stringify({ found: false, message: 'No weight logs found.' });
+    return JSON.stringify({ found: true, weight_log: log });
+  }
+
+  private getWeightRange(input: Record<string, unknown>): string {
+    const startDate = String(input.start_date ?? '');
+    const endDate = String(input.end_date ?? '');
+    const logs = this.deps.weightLogRepository.getRange(this.chatId, startDate, endDate);
+    return JSON.stringify({
+      count: logs.length,
+      start_date: startDate,
+      end_date: endDate,
+      weight_logs: logs,
+    });
+  }
+
+  private deleteWeight(input: Record<string, unknown>): string {
+    const weightId = this.num(input.weight_id);
+    const deleted = this.deps.weightLogRepository.delete(this.chatId, weightId);
+    if (!deleted)
+      return JSON.stringify({
+        success: false,
+        message: 'Weight log not found or already deleted.',
+      });
+    return JSON.stringify({ success: true, message: 'Weight log deleted.' });
+  }
+
+  private updateWeight(input: Record<string, unknown>): string {
+    const weightId = this.num(input.weight_id);
+    if (weightId == null)
+      return JSON.stringify({ success: false, message: 'weight_id is required.' });
+    const fields: any = {};
+    if (this.num(input.weight_kg) != null) fields.weightKg = this.num(input.weight_kg);
+    if (typeof input.notes === 'string') fields.notes = input.notes;
+    if (typeof input.date === 'string') fields.date = input.date;
+
+    const updated = this.deps.weightLogRepository.update(this.chatId, weightId, fields);
+
+    if (!updated) return JSON.stringify({ success: false, message: 'Weight log not found.' });
+
+    if (fields.weightKg != null) {
+      this.deps.healthProfileRepository.upsert(this.chatId, { weightKg: fields.weightKg });
+    }
+
+    return JSON.stringify({ success: true, message: 'Weight log updated.' });
   }
 
   // ============================================================================
